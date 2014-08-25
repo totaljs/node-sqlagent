@@ -11,8 +11,114 @@ function Agent(options) {
 
 Agent.prototype.push = function(name, query, params, prepare) {
     var self = this;
-    self.command.push({ name: name, query: query, params: params, prepare: prepare });
+
+    if (typeof(query) !== 'string') {
+        prepare = params;
+        params = query;
+        query = name;
+        name = self.command.length + 1;
+    }
+
+    self.command.push({ name: name, query: query, params: params, prepare: prepare, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
     return self;
+};
+
+Agent.prototype.insert = function(name, table, values, prepare, id) {
+
+    var self = this;
+
+    if (typeof(table) !== 'string') {
+        id = prepare;
+        prepare = values;
+        values = table;
+        table = name;
+        name = self.command.length + 1;
+    }
+
+    if (typeof(prepare) === 'string') {
+        var tmp = id;
+        id = prepare;
+        prepare = tmp;
+    }
+
+    var keys = Object.keys(values);
+
+    var columns = [];
+    var columns_values = [];
+    var params = [];
+    var index = 1;
+
+    for (var i = 0, length = keys.length; i < length; i++) {
+        var key = keys[i];
+        var value = values[key];
+        columns.push(key);
+
+        if (value instanceof Array) {
+
+            var helper = [];
+
+            for (var j = 0, sublength = value.length; j < sublength; j++) {
+                helper.push('$' + index++);
+                params.push(value[j] === undefined ? null : value[j]);
+            }
+
+            columns_values.push('(' + helper.join(',') + ')');
+        } else {
+            columns_values.push('$' + index++);
+            params.push(value === undefined ? null : value);
+        }
+    }
+
+    self.command.push({ name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (id || 'Id'), params: params, prepare: prepare, first: true });
+
+};
+
+Agent.prototype.update = function(name, table, values, condition, prepare) {
+
+    var self = this;
+
+    if (typeof(table) !== 'string') {
+        prepare = condition;
+        condition = values;
+        values = table;
+        table = name;
+        name = self.command.length + 1;
+    }
+
+    if (typeof(prepare) === 'string') {
+        var tmp = id;
+        id = prepare;
+        prepare = tmp;
+    }
+
+    var keys = Object.keys(values);
+
+    var columns = [];
+    var params = [];
+    var index = 1;
+
+    for (var i = 0, length = keys.length; i < length; i++) {
+        var key = keys[i];
+        var value = values[key];
+
+        if (value instanceof Array) {
+
+            var helper = [];
+
+            for (var j = 0, sublength = value.length; j < sublength; j++) {
+                helper.push('$' + index++);
+                params.push(value[j] === undefined ? null : value[j]);
+            }
+
+            columns.push(key + '=(' + helper.join(',') + ')');
+        } else {
+            columns.push(key + '=$' + index++);
+            params.push(value === undefined ? null : value);
+        }
+    }
+
+    self.command.push({ name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + ' WHERE ' + condition, params: params, prepare: prepare, first: true });
+
 };
 
 Agent.prototype.remove = function(name) {
@@ -62,7 +168,7 @@ Agent.prototype.prepare = function(callback) {
                 errors[item.name] = err;
                 isError = true;
             } else
-                results[item.name] = result.command === 'INSERT' ? result.rows[0] : result.rows;
+                results[item.name] = result.command === 'INSERT' || item.first ? result.rows[0] : result.rows;
 
             next();
 
@@ -127,138 +233,6 @@ Agent.prototype.exec = function(callback, autoclose) {
     return self;
 };
 
-Agent.prototype.insert = function(name, table, obj, without, prepare) {
-
-    var self = this;
-    var conn = self.db;
-    var keys = Object.keys(obj);
-    var length = keys.length;
-    var query = 'INSERT INTO ' + table + ' (';
-    var values = '';
-    var params = [];
-
-    if (typeof(without) === 'function') {
-        var tmp = without;
-        prepare = without;
-        without = tmp;
-    }
-
-    if (without === true && prepare === undefined)
-        prepare = true;
-
-    if (!(without instanceof Array) || without.length === 0)
-        without = null;
-
-    var is = false;
-
-    for (var i = 0; i < length; i++) {
-
-        var column = keys[i];
-
-        if (without !== null && without.indexOf(column) !== -1)
-            continue;
-
-        if (!is) {
-            is = true;
-            query += column;
-        } else
-            query += ',' + column;
-
-        var value = obj[column];
-        var type = typeof(value);
-
-        if (values !== '')
-            values += ',';
-
-        if (value === null || value === undefined) {
-            values += 'null';
-            continue;
-        }
-
-        values += '$' + (params.length + 1);
-
-        switch (type) {
-            case 'string':
-            case 'number':
-            case 'boolean':
-                params.push(value);
-                break;
-            case 'object':
-                if (utils.isDate(value))
-                    params.push(value);
-                else if (utils.isArray(value))
-                    params.push(value.join(','));
-                else
-                    params.push(JSON.stringify(value));
-                break;
-        }
-    }
-    self.command.push({ name: name, query: query + ') VALUES(' + values + ') RETURNING ' + (obj['PRIMARYKEY'] ? obj['PRIMARYKEY'] : 'Id'), params: params, prepare: prepare });
-    return self;
-};
-
-Agent.prototype.update = function(name, table, obj, condition, without, prepare) {
-
-    var self = this;
-    var conn = self.db;
-    var keys = Object.keys(obj);
-    var length = keys.length;
-    var query = 'UPDATE ' + table + ' SET ';
-    var values = '';
-    var params = [];
-
-    if (typeof(without) === 'function') {
-        var tmp = without;
-        prepare = without;
-        without = tmp;
-    }
-
-    if (without === true && prepare === undefined)
-        prepare = true;
-
-    if (!(without instanceof Array) || without.length === 0)
-        without = null;
-
-    for (var i = 0; i < length; i++) {
-        var column = keys[i];
-
-        if (without !== null && without.indexOf(column) !== -1)
-            continue;
-
-        var value = obj[column];
-        var type = typeof(value);
-
-        if (values !== '')
-            values += ',';
-
-        if (value === null || value === undefined) {
-            values += column + "=null";
-            continue;
-        }
-
-        values += column + '=$' + (params.length + 1);
-
-        switch (type) {
-            case 'string':
-            case 'number':
-            case 'boolean':
-                params.push(value);
-                break;
-            case 'object':
-                if (utils.isDate(value))
-                    params.push(value);
-                else if (utils.isArray(value))
-                    params.push(value.join(','));
-                else
-                    params.push(JSON.stringify(value));
-                break;
-        }
-    }
-
-    self.command.push({ name: name, query: query + values + ' WHERE ' + condition, params: params, prepare: prepare });
-    return self;
-};
-
 Agent.prototype.compare = function(form, data, condition) {
 
     var formLength = form.length;
@@ -286,4 +260,5 @@ Agent.prototype.compare = function(form, data, condition) {
 
     return { insert: row_insert, update: row_update, remove: row_remove };
 };
+
 module.exports = Agent;
