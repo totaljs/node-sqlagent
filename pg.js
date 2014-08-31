@@ -23,24 +23,13 @@ Agent.prototype.push = function(name, query, params, prepare) {
     return self;
 };
 
-Agent.prototype.insert = function(name, table, values, prepare, id) {
+Agent.prototype._insert = function(item) {
 
     var self = this;
-
-    if (typeof(table) !== 'string') {
-        id = prepare;
-        prepare = values;
-        values = table;
-        table = name;
-        name = self.command.length + 1;
-    }
-
-    if (typeof(prepare) === 'string') {
-        var tmp = id;
-        id = prepare;
-        prepare = tmp;
-    }
-
+    var name = item.name;
+    var values = item.values;
+    var id = item.id;
+    var table = item.table;
     var keys = Object.keys(values);
 
     var columns = [];
@@ -69,28 +58,16 @@ Agent.prototype.insert = function(name, table, values, prepare, id) {
         }
     }
 
-    self.command.push({ name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (id || 'Id'), params: params, prepare: prepare, first: true });
-
+    return { name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (id || 'Id'), params: params, first: true };
 };
 
-Agent.prototype.update = function(name, table, values, condition, prepare) {
+Agent.prototype._update = function(item) {
 
     var self = this;
-
-    if (typeof(table) !== 'string') {
-        prepare = condition;
-        condition = values;
-        values = table;
-        table = name;
-        name = self.command.length + 1;
-    }
-
-    if (typeof(prepare) === 'string') {
-        var tmp = id;
-        id = prepare;
-        prepare = tmp;
-    }
-
+    var name = item.name;
+    var values = item.values;
+    var condition = item.condition;
+    var table = item.table;
     var keys = Object.keys(values);
 
     var columns = [];
@@ -117,8 +94,52 @@ Agent.prototype.update = function(name, table, values, condition, prepare) {
         }
     }
 
-    self.command.push({ name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + ' WHERE ' + condition, params: params, prepare: prepare, first: true });
+    self.command.push({ name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + ' WHERE ' + condition, params: params, first: true });
 
+};
+
+Agent.prototype.insert = function(name, table, values, prepare, id) {
+
+    var self = this;
+
+    if (typeof(table) !== 'string') {
+        id = prepare;
+        prepare = values;
+        values = table;
+        table = name;
+        name = self.command.length + 1;
+    }
+
+    if (typeof(prepare) === 'string') {
+        var tmp = id;
+        id = prepare;
+        prepare = tmp;
+    }
+
+    self.command.push({ type: 'insert', table: table, name: name, values: values, prepare: prepare, id: id });
+    return self;
+};
+
+Agent.prototype.update = function(name, table, values, condition, prepare) {
+
+    var self = this;
+
+    if (typeof(table) !== 'string') {
+        prepare = condition;
+        condition = values;
+        values = table;
+        table = name;
+        name = self.command.length + 1;
+    }
+
+    if (typeof(prepare) === 'string') {
+        var tmp = id;
+        id = prepare;
+        prepare = tmp;
+    }
+
+    self.command.push({ type: 'update', table: table, name: name, values: values, prepare: prepare, condition: condition });
+    return self;
 };
 
 Agent.prototype.remove = function(name) {
@@ -156,19 +177,21 @@ Agent.prototype.prepare = function(callback) {
     self.command.wait(function(item, next) {
 
         if (item.prepare) {
-            if (item.prepare(item, results, isError ? errors : null) === false) {
+            if (item.prepare(item.type ? item.values : item, results, isError ? errors : null) === false) {
                 next();
                 return;
             }
         }
 
-        self.db.query({ text: item.query }, item.params, function(err, result) {
+        var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item;
+
+        self.db.query({ text: current.query }, current.params, function(err, result) {
 
             if (err) {
-                errors[item.name] = err;
+                errors[current.name] = err;
                 isError = true;
             } else
-                results[item.name] = result.command === 'INSERT' || item.first ? result.rows[0] : result.rows;
+                results[current.name] = result.command === 'INSERT' || current.first ? result.rows[0] : result.rows;
 
             next();
 
