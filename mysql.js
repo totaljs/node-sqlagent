@@ -81,7 +81,7 @@ Agent.prototype._update = function(item) {
     for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
         var value = values[key];
-        columns.push(key + '=$' + index++);
+        columns.push(key + '=?');
         params.push(value === undefined ? null : value);
     }
 
