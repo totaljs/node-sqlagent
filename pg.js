@@ -21,7 +21,7 @@ Agent.prototype.push = function(name, query, params, prepare) {
         prepare = params;
         params = query;
         query = name;
-        name = self.command.length + 1;
+        name = self.command.length;
     }
 
     self.command.push({ name: name, query: query, params: params, prepare: prepare, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
@@ -112,7 +112,7 @@ Agent.prototype.insert = function(name, table, values, prepare, id) {
         prepare = values;
         values = table;
         table = name;
-        name = self.command.length + 1;
+        name = self.command.length;
     }
 
     if (typeof(prepare) === 'string') {
@@ -134,7 +134,7 @@ Agent.prototype.update = function(name, table, values, condition, prepare) {
         condition = values;
         values = table;
         table = name;
-        name = self.command.length + 1;
+        name = self.command.length;
     }
 
     if (typeof(prepare) === 'string') {
