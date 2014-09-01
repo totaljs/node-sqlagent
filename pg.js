@@ -1,4 +1,4 @@
-var pg = require('pg');
+var database = require('pg');
 require('./index');
 
 function Agent(options) {
@@ -8,6 +8,11 @@ function Agent(options) {
     this.done = null;
     this.autoclose = true;
 }
+
+Agent.prototype.query = function(name, query, params, prepare) {
+    var self = this;
+    return self.push(name, query, params, prepare);
+};
 
 Agent.prototype.push = function(name, query, params, prepare) {
     var self = this;
@@ -240,7 +245,7 @@ Agent.prototype.exec = function(callback, autoclose) {
         return self;
     }
 
-    pg.connect(self.options, function(err, client, done) {
+    database.connect(self.options, function(err, client, done) {
 
         if (err) {
             callback(err, null);
