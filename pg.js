@@ -51,6 +51,9 @@ Agent.prototype._insert = function(item) {
         var value = values[key];
         columns.push(key);
 
+        if (item.without && item.without.indexOf(key) !== -1)
+            continue;
+
         if (value instanceof Array) {
 
             var helper = [];
@@ -87,6 +90,9 @@ Agent.prototype._update = function(item) {
         var key = keys[i];
         var value = values[key];
 
+        if (item.without && item.without.indexOf(key) !== -1)
+            continue;
+
         if (value instanceof Array) {
 
             var helper = [];
@@ -107,7 +113,7 @@ Agent.prototype._update = function(item) {
 
 };
 
-Agent.prototype.insert = function(name, table, values, before, after) {
+Agent.prototype.insert = function(name, table, values, without, before, after) {
 
     var self = this;
 
@@ -119,11 +125,11 @@ Agent.prototype.insert = function(name, table, values, before, after) {
         name = self.command.length;
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, values: values, before: before, after: after });
+    self.command.push({ type: 'insert', table: table, name: name, values: values, without: without, before: before, after: after });
     return self;
 };
 
-Agent.prototype.update = function(name, table, values, condition, before, after) {
+Agent.prototype.update = function(name, table, values, condition, without, before, after) {
 
     var self = this;
 
@@ -136,7 +142,7 @@ Agent.prototype.update = function(name, table, values, condition, before, after)
         name = self.command.length;
     }
 
-    self.command.push({ type: 'update', table: table, name: name, values: values, before: before, after: after, condition: condition });
+    self.command.push({ type: 'update', table: table, name: name, values: values, without: without, before: before, after: after, condition: condition });
     return self;
 };
 
