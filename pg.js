@@ -188,6 +188,7 @@ Agent.prototype.prepare = function(callback) {
 
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item;
 
+        self.emit('query', name, current.query);
         self.db.query({ text: current.query }, current.params, function(err, rows) {
 
             if (err) {

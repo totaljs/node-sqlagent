@@ -65,7 +65,7 @@ Agent.prototype._insert = function(item) {
         if (item.without && item.without.indexOf(key) !== -1)
             continue;
 
-        columns.push(key);
+        columns.push('`' + key + '`');
         columns_values.push('?');
         params.push(value === undefined ? null : value);
     }
@@ -93,7 +93,7 @@ Agent.prototype._update = function(item) {
         if (item.without && item.without.indexOf(key) !== -1)
             continue;
 
-        columns.push(key + '=?');
+        columns.push('`' + key + '`=?');
         params.push(value === undefined ? null : value);
     }
 
@@ -177,13 +177,14 @@ Agent.prototype.prepare = function(callback) {
 
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item;
 
+        self.emit('query', current.name, current.query);
         self.db.query(current.query, current.params, function(err, rows) {
 
             if (err) {
                 errors[current.name] = err;
                 isError = true;
             } else {
-                results[current.name] = current.first ? rows[0] : rows;
+                results[current.name] = current.first ? rows instanceof Array ? rows[0] : rows : rows;
                 self.emit('data', current.name, results);
             }
 

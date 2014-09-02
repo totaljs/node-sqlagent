@@ -177,7 +177,8 @@ Agent.prototype.prepare = function(callback) {
 
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item;
 
-        self.db.query({ text: current.query }, current.params, function(err, rows) {
+        self.emit('query', current.name, current.query);
+        self.db.query(current.query, current.params, function(err, rows) {
 
             if (err) {
                 errors[current.name] = err;
