@@ -97,7 +97,7 @@ Agent.prototype._update = function(item) {
         params.push(value === undefined ? null : value);
     }
 
-    self.command.push({ name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + ' WHERE ' + condition, params: params, first: true });
+    return { name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + ' WHERE ' + condition, params: params, first: true };
 
 };
 
@@ -107,7 +107,8 @@ Agent.prototype.insert = function(name, table, values, without, before, after) {
 
     if (typeof(table) !== 'string') {
         after = before;
-        before = values;
+        before = without;
+        without = values;
         values = table;
         table = name;
         name = self.command.length;
@@ -123,7 +124,8 @@ Agent.prototype.update = function(name, table, values, condition, without, befor
 
     if (typeof(table) !== 'string') {
         after = before;
-        before = condition;
+        before = without;
+        without = condition;
         condition = values;
         values = table;
         table = name;
