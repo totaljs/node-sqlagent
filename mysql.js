@@ -1,5 +1,6 @@
 var database = require('mysql');
 var Url = require('url');
+var Events = require('events');
 
 require('./index');
 
@@ -22,22 +23,25 @@ function Agent(options) {
     this.autoclose = true;
 }
 
-Agent.prototype.query = function(name, query, params, prepare) {
+Agent.prototype.__proto__ = new Events.EventEmitter();
+
+Agent.prototype.query = function(name, query, params, before, after) {
     var self = this;
-    return self.push(name, query, params, prepare);
+    return self.push(name, query, params, before, after);
 };
 
-Agent.prototype.push = function(name, query, params, prepare) {
+Agent.prototype.push = function(name, query, params, before, after) {
     var self = this;
 
     if (typeof(query) !== 'string') {
-        prepare = params;
+        after = before;
+        before = params;
         params = query;
         query = name;
         name = self.command.length;
     }
 
-    self.command.push({ name: name, query: query, params: params, prepare: prepare, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
+    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
     return self;
 };
 
@@ -89,40 +93,36 @@ Agent.prototype._update = function(item) {
 
 };
 
-Agent.prototype.insert = function(name, table, values, prepare) {
+Agent.prototype.insert = function(name, table, values, before, after) {
 
     var self = this;
 
     if (typeof(table) !== 'string') {
-        prepare = values;
+        after = before;
+        before = values;
         values = table;
         table = name;
         name = self.command.length;
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, values: values, prepare: prepare });
+    self.command.push({ type: 'insert', table: table, name: name, values: values, before: before, after: after });
     return self;
 };
 
-Agent.prototype.update = function(name, table, values, condition, prepare) {
+Agent.prototype.update = function(name, table, values, condition, before, after) {
 
     var self = this;
 
     if (typeof(table) !== 'string') {
-        prepare = condition;
+        after = before;
+        before = condition;
         condition = values;
         values = table;
         table = name;
         name = self.command.length;
     }
 
-    if (typeof(prepare) === 'string') {
-        var tmp = id;
-        id = prepare;
-        prepare = tmp;
-    }
-
-    self.command.push({ type: 'update', table: table, name: name, values: values, prepare: prepare, condition: condition });
+    self.command.push({ type: 'update', table: table, name: name, values: values, before: before, after: after, condition: condition });
     return self;
 };
 
@@ -158,13 +158,11 @@ Agent.prototype.prepare = function(callback) {
     var isError = false;
     var self = this;
 
-    self.command.wait(function(item, next) {
+    self.command.sqlagent(function(item, next) {
 
-        if (item.prepare) {
-            if (item.prepare(item.type ? item.values : item, results, isError ? errors : null) === false) {
-                next();
-                return;
-            }
+        if (item.before && item.before(item.type ? item.values : item, results, isError ? errors : null) === false) {
+            next();
+            return;
         }
 
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item;
@@ -174,8 +172,13 @@ Agent.prototype.prepare = function(callback) {
             if (err) {
                 errors[current.name] = err;
                 isError = true;
-            } else
+            } else {
                 results[current.name] = current.first ? rows[0] : rows;
+                self.emit('data', current.name, results);
+            }
+
+            if (item.after)
+                item.after(current.type ? current.values : current, results, isError ? errors : null);
 
             next();
 
@@ -190,6 +193,8 @@ Agent.prototype.prepare = function(callback) {
 
         if (!isError) {
 
+            self.emit('end', null, results);
+
             if (callback)
                 callback(null, results);
 
@@ -202,6 +207,8 @@ Agent.prototype.prepare = function(callback) {
             if (results[i] instanceof Error)
                 errs[i] = results[i];
         }
+
+        self.emit('end', isError ? errors : null, results);
 
         if (callback)
             callback(isError ? errors : null, results);
