@@ -181,10 +181,13 @@ Agent.prototype.prepare = function(callback) {
 
     self.command.sqlagent(function(item, next) {
 
-        if (item.before && item.before(item.type ? item.values : item, results, isError ? errors : null) === false) {
-            next();
-            return;
-        }
+        try
+        {
+            if (item.before && item.before(item.type ? item.values : item, results, isError ? errors : null) === false) {
+                next();
+                return;
+            }
+        } catch {}
 
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item;
 
@@ -199,8 +202,11 @@ Agent.prototype.prepare = function(callback) {
                 self.emit('data', current.name, results);
             }
 
-            if (item.after)
-                item.after(current.type ? current.values : current, results, isError ? errors : null);
+            try
+            {
+                if (item.after)
+                    item.after(current.type ? current.values : current, results, isError ? errors : null);
+            } catch {}
 
             next();
 
