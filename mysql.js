@@ -5,9 +5,24 @@ require('./index');
 
 function SqlBuilder(skip, take) {
     this.builder = [];
+    this._order = null;
     this._skip = skip >= 0 ? skip : 0;
     this._take = take >= 0 ? take : 0;
 }
+
+SqlBuilder.prototype.order = function(name, desc) {
+
+    var self = this;
+
+    if (!self.order)
+        self._order = [];
+
+    if (typeof(desc) === 'boolean')
+        desc = desc === true ? 'DESC' : 'ASC';
+
+    self._order.push(SqlBuilder.column(name) + ' ' + desc);
+    return self;
+};
 
 SqlBuilder.prototype.skip = function(value) {
     var self = this;
@@ -21,12 +36,25 @@ SqlBuilder.prototype.take = function(value) {
     return self;
 };
 
+SqlBuilder.prototype.first = function() {
+    var self = this;
+    self._skip = 0;
+    self._take = 1;
+    return self;
+};
+
 SqlBuilder.prototype.where = function(name, operator, value) {
     return this.push(name, operator, value);
 };
 
 SqlBuilder.prototype.push = function(name, operator, value) {
     var self = this;
+
+    if (value === undefined) {
+        value = operator;
+        operator = '=';
+    }
+
     self.builder.push(SqlBuilder.column(name) + ' ' + operator + ' ' + SqlBuilder.escape(value));
     return self;
 };
@@ -126,6 +154,10 @@ SqlBuilder.prototype.toString = function() {
 
     var self = this;
     var plus = '';
+    var order = '';
+
+    if (self._order)
+        order = ' ' + self._order.join(',');
 
     if (self._skip > 0 && self._take > 0)
         plus = ' LIMIT ' + self._skip + ',' + self._take;
@@ -137,7 +169,7 @@ SqlBuilder.prototype.toString = function() {
     if (self.builder.length === 0)
         return plus;
 
-    return ' WHERE ' + self.builder.join(' ') + plus;
+    return ' WHERE ' + self.builder.join(' ') + order + plus;
 };
 
 function Agent(options) {
@@ -157,6 +189,7 @@ function Agent(options) {
     this.db = null;
     this.done = null;
     this.autoclose = true;
+    this.last = null;
     this.id = null;
     this.isStopped = false;
 }
@@ -185,6 +218,16 @@ Agent.prototype.push = function(name, query, params, before, after) {
 
 Agent.prototype.stop = function(fn) {
     var self = this;
+    if (fn === undefined) {
+        fn = function(err, results) {
+            if (!self.last)
+                return false;
+            var r = results[self.last];
+            if (r instanceof Array)
+                return r.length > 0;
+            return r !== null && r !== undefined;
+        };
+    }
     self.command.push({ type: 'stop', before: fn });
     return self;
 };
@@ -385,9 +428,11 @@ Agent.prototype.prepare = function(callback) {
 
         if (item.type === 'stop') {
             if (item.before(hasError, results) === false) {
+                errors.push('stop');
                 self.isStopped = true;
                 self.command = [];
-                next();
+                results = null;
+                next(false);
                 return;
             }
         }
@@ -412,6 +457,8 @@ Agent.prototype.prepare = function(callback) {
                 results[current.name] = current.first ? rows instanceof Array ? rows[0] : rows : rows;
                 self.emit('data', current.name, results);
             }
+
+            self.last = item.name;
 
             if (item.after)
                 item.after(errors.length > 0 ? errors : null, results, current.values, current.condition);
