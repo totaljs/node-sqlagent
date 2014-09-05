@@ -55,7 +55,7 @@ SqlBuilder.prototype.push = function(name, operator, value) {
         operator = '=';
     }
 
-    self.builder.push(SqlBuilder.column(name) + ' ' + operator + ' ' + SqlBuilder.escape(value));
+    self.builder.push(SqlBuilder.column(name) + operator + SqlBuilder.escape(value));
     return self;
 };
 
