@@ -579,7 +579,7 @@ Agent.prototype.exec = function(callback, autoclose) {
 
     if (self.command.length === 0) {
         if (callback)
-            callback(null, {});
+            callback.call(self, null, {});
         return self;
     }
 
@@ -588,7 +588,7 @@ Agent.prototype.exec = function(callback, autoclose) {
     connection.connect(function(err) {
 
         if (err) {
-            callback(err, null);
+            callback.call(self, err, null);
             return;
         }
 
