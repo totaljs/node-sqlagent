@@ -191,7 +191,7 @@ function Agent(options) {
     this.autoclose = true;
     this.last = null;
     this.id = null;
-    this.isStopped = false;
+    this.isCanceled = false;
 }
 
 Agent.prototype.__proto__ = new Events.EventEmitter();
@@ -216,11 +216,15 @@ Agent.prototype.push = function(name, query, params, before, after) {
     return self;
 };
 
-Agent.prototype.stop = function(fn) {
+Agent.prototype.validate = function(fn) {
+    return this.cancel(fn);
+};
+
+Agent.prototype.cancel = function(fn) {
     var self = this;
     if (fn === undefined) {
         fn = function(err, results) {
-            if (!self.last)
+            if (self.last === null)
                 return false;
             var r = results[self.last];
             if (r instanceof Array)
@@ -228,7 +232,7 @@ Agent.prototype.stop = function(fn) {
             return r !== null && r !== undefined;
         };
     }
-    self.command.push({ type: 'stop', before: fn });
+    self.command.push({ type: 'cancel', before: fn });
     return self;
 };
 
@@ -426,15 +430,17 @@ Agent.prototype.prepare = function(callback) {
 
         var hasError = errors.length > 0 ? errors : null;
 
-        if (item.type === 'stop') {
+        if (item.type === 'cancel') {
             if (item.before(hasError, results) === false) {
-                errors.push('stop');
-                self.isStopped = true;
+                errors.push('cancel');
+                self.isCanceled = true;
                 self.command = [];
                 results = null;
                 next(false);
                 return;
             }
+            next();
+            return;
         }
 
         if (item.before && item.before(hasError, results, item.values, item.condition) === false) {
