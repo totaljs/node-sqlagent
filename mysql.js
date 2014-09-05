@@ -268,6 +268,9 @@ Agent.prototype._insert = function(item) {
         if (item.without && item.without.indexOf(key) !== -1)
             continue;
 
+        if (key[0] === '$')
+            continue;
+
         columns.push('`' + key + '`');
         columns_values.push('?');
         params.push(value === undefined ? null : value);
@@ -294,6 +297,9 @@ Agent.prototype._update = function(item) {
         var value = values[key];
 
         if (item.without && item.without.indexOf(key) !== -1)
+            continue;
+
+        if (key[0] === '$')
             continue;
 
         columns.push('`' + key + '`=?');
@@ -348,8 +354,13 @@ Agent.prototype.select = function(name, table, schema, without, skip, take, befo
     var arr = Object.keys(schema);
 
     for (var i = 0, length = arr.length; i < length; i++) {
+
         if (without && without.indexOf(arr[i]) !== -1)
             continue;
+
+        if (arr[i][0] === '$')
+            continue;
+
         columns.push(SqlBuilder.column(arr[i]));
     }
 
