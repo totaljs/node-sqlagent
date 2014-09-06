@@ -236,6 +236,12 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
+Agent.prototype.put = function(value) {
+    var self = this;
+    self.command.push({ type: 'id', params: value });
+    return self;
+};
+
 Agent.prototype.query = function(name, query, params, before, after) {
     var self = this;
     return self.push(name, query, params, before, after);
@@ -503,6 +509,12 @@ Agent.prototype.prepare = function(callback) {
                 next(false);
                 return;
             }
+            next();
+            return;
+        }
+
+        if (item.type === 'id') {
+            self.id = item.params;
             next();
             return;
         }
