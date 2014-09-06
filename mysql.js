@@ -449,6 +449,18 @@ Agent.prototype.select = function(name, table, schema, without, skip, take, befo
     return condition;
 };
 
+Agent.prototype.updateOnly = function(name, table, values, only, before, after) {
+
+    var model = {};
+
+    for (var i = 0, length = only.length; i < length; i++) {
+        var key = only[i];
+        model[key] = values[i] === undefined ? null : values[i];
+    }
+
+    return this.update(name, table, model, null, before, after);
+};
+
 Agent.prototype.update = function(name, table, values, without, before, after) {
 
     var self = this;
