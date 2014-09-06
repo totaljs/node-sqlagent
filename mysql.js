@@ -243,6 +243,12 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
+Agent.prototype.prepare = function(fn) {
+    var self = this;
+    self.command.push({ type: 'prepare', before: fn });
+    return self;
+};
+
 Agent.prototype.put = function(value) {
     var self = this;
 
@@ -525,7 +531,7 @@ Agent.prototype.close = function() {
     return self;
 };
 
-Agent.prototype.prepare = function(callback) {
+Agent.prototype._prepare = function(callback) {
 
     var results = {};
     var errors = [];
@@ -547,6 +553,13 @@ Agent.prototype.prepare = function(callback) {
                 return;
             }
             next();
+            return;
+        }
+
+        if (item.type === 'prepare') {
+            item.before(hasError, results, function() {
+                next();
+            });
             return;
         }
 
@@ -707,11 +720,52 @@ Agent.prototype.exec = function(callback, autoclose) {
         };
 
         self.db = connection;
-        self.prepare(callback);
+        self._prepare(callback);
 
     });
 
     return self;
+};
+
+Agent.prototype.compare = function(form, data, property) {
+
+    var formLength = form.length;
+    var dataLength = data.length;
+
+    var row_insert = [];
+    var row_update = [];
+    var row_remove = [];
+    var cache = {};
+
+    for (var i = 0; i < dataLength; i++) {
+
+        var skip = false;
+
+        for (var j = 0; j < formLength; j++) {
+            if (form[j][property] === data[i][property]) {
+                row_update.push({ form: form[j], item: data[i] });
+                skip = true;
+                break;
+            }
+        }
+
+        if (!skip)
+            row_remove.push(data[i]);
+    }
+
+    for (var j = 0; j < formLength; j++) {
+        var add = true;
+        for (var i = 0; i < dataLength; i++) {
+            if (form[j][property] === data[i][property]) {
+                add = false;
+                break;
+            }
+        }
+        if (add)
+            row_insert.push(form[j]);
+    }
+
+    return { insert: row_insert, update: row_update, remove: row_remove };
 };
 
 module.exports = Agent;
