@@ -24,6 +24,8 @@ SqlBuilder.prototype.order = function(name, desc) {
         return self;
     } else if (typeof(desc) === 'boolean')
         desc = desc === true ? 'DESC' : 'ASC';
+    else
+        desc = 'ASC';
 
     self._order.push(SqlBuilder.column(name) + ' ' + desc);
     return self;
