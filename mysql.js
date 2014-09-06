@@ -336,8 +336,13 @@ Agent.prototype._insert = function(item) {
         columns.push('`' + key + '`');
         columns_values.push('?');
 
-        if (typeof(value) === 'function')
+        var type = typeof(value);
+
+        if (type === 'function')
             value = value();
+
+        if (type === 'string')
+            value = value.trim();
 
         params.push(value === undefined ? null : value);
     }
@@ -368,8 +373,12 @@ Agent.prototype._update = function(item) {
         if (key[0] === '$')
             continue;
 
-        if (typeof(value) === 'function')
+        var type = typeof(value);
+        if (type === 'function')
             value = value();
+
+        if (type === 'string')
+            value = value.trim();
 
         columns.push('`' + key + '`=?');
         params.push(value === undefined ? null : value);
