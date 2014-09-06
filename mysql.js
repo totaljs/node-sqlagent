@@ -60,6 +60,10 @@ SqlBuilder.prototype.push = function(name, operator, value) {
         operator = '=';
     }
 
+    // I expect Agent.$$
+    if (typeof(value) === 'function')
+        value = '$';
+
     self.builder.push(SqlBuilder.column(name) + operator + (value === '$' ? '$' : SqlBuilder.escape(value)));
     return self;
 };
@@ -215,6 +219,7 @@ function Agent(options) {
     this.id = null;
     this.isCanceled = false;
     this.index = 0;
+    this.isPut = false;
 }
 
 Agent.prototype = {
@@ -238,7 +243,16 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 
 Agent.prototype.put = function(value) {
     var self = this;
-    self.command.push({ type: 'id', params: value });
+
+    if (value === undefined || value === null) {
+        self.isPut = false;
+        self.id = null;
+        return self;
+    }
+
+    self.command.push({ type: 'put', params: value });
+    self.isPut = true;
+
     return self;
 };
 
@@ -513,8 +527,8 @@ Agent.prototype.prepare = function(callback) {
             return;
         }
 
-        if (item.type === 'id') {
-            self.id = item.params;
+        if (item.type === 'put') {
+            self.id = typeof(item.params) === 'function' ? item.params() : item.params;
             next();
             return;
         }
@@ -539,7 +553,7 @@ Agent.prototype.prepare = function(callback) {
                     rollback = true;
             } else {
 
-                if (current.type === 'insert')
+                if (self.isPut === false && current.type === 'insert')
                     self.id = rows.insertId;
 
                 results[current.name] = current.first ? rows instanceof Array ? rows[0] : rows : rows;
