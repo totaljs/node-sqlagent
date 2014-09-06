@@ -315,7 +315,7 @@ Agent.prototype._select = function(item) {
 };
 
 Agent.prototype._delete = function(item) {
-    return { name: name, query: item.query + condition.toString(), params: null, first: true };
+    return { name: item.name, query: item.query + item.condition.toString(), params: null, first: true };
 };
 
 Agent.prototype.insert = function(name, table, values, without, before, after) {
@@ -399,12 +399,16 @@ Agent.prototype.delete = function(name, table, before, after) {
     }
 
     var condition = new SqlBuilder();
-    self.command.push({ type: 'delete', query: 'DELETE FROM ' + table, name: name, values: null, without: without, before: before, after: after, condition: condition });
+    self.command.push({ type: 'delete', query: 'DELETE FROM ' + table, name: name, values: null, without: null, before: before, after: after, condition: condition });
     return condition;
 
 };
 
-Agent.prototype.remove = function(name) {
+Agent.prototype.remove = function(name, table, before, after) {
+    return this.delete(name, table, before, after);
+};
+
+Agent.prototype.destroy = function(name) {
 
     var self = this;
 
