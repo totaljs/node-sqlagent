@@ -60,7 +60,7 @@ SqlBuilder.prototype.push = function(name, operator, value) {
         operator = '=';
     }
 
-    self.builder.push(SqlBuilder.column(name) + operator + SqlBuilder.escape(value));
+    self.builder.push(SqlBuilder.column(name) + operator + (value === '$' ? '$' : SqlBuilder.escape(value)));
     return self;
 };
 
@@ -70,6 +70,15 @@ SqlBuilder.escape = function(value) {
         return 'null';
 
     var type = typeof(value);
+
+    if (type === 'function') {
+        value = value();
+
+        if (value === null || value === undefined)
+            return 'null';
+
+        type = typeof(value);
+    }
 
     if (type === 'boolean')
         return value === true ? '1' : '0';
@@ -155,7 +164,7 @@ SqlBuilder.prototype.sql = function(sql) {
     return self;
 };
 
-SqlBuilder.prototype.toString = function() {
+SqlBuilder.prototype.toString = function(id) {
 
     var self = this;
     var plus = '';
@@ -174,7 +183,15 @@ SqlBuilder.prototype.toString = function() {
     if (self.builder.length === 0)
         return plus;
 
-    return ' WHERE ' + self.builder.join(' ') + order + plus;
+
+    var where = self.builder.join(' ');
+
+    if (id === undefined || id === null)
+        id = 0;
+
+    where = where.replace(/\$(?=\s|$)/g, SqlBuilder.escape(id));
+
+    return ' WHERE ' + where + order + plus;
 };
 
 function Agent(options) {
@@ -203,6 +220,12 @@ function Agent(options) {
 Agent.prototype = {
     get $() {
         return new SqlBuilder();
+    },
+    get $$() {
+        var self = this;
+        return function() {
+            return self.id;
+        };
     }
 };
 
@@ -290,6 +313,10 @@ Agent.prototype._insert = function(item) {
 
         columns.push('`' + key + '`');
         columns_values.push('?');
+
+        if (typeof(value) === 'function')
+            value = value();
+
         params.push(value === undefined ? null : value);
     }
 
@@ -319,20 +346,25 @@ Agent.prototype._update = function(item) {
         if (key[0] === '$')
             continue;
 
+        if (typeof(value) === 'function')
+            value = value();
+
         columns.push('`' + key + '`=?');
         params.push(value === undefined ? null : value);
     }
 
-    return { name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(), params: params, first: true };
+    return { name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(self.id), params: params, first: true };
 
 };
 
 Agent.prototype._select = function(item) {
-    return { name: item.name, query: item.query + item.condition.toString(), params: null, first: item.condition._take === 1 };
+    var self = this;
+    return { name: item.name, query: item.query + item.condition.toString(self.id), params: null, first: item.condition._take === 1 };
 };
 
 Agent.prototype._delete = function(item) {
-    return { name: item.name, query: item.query + item.condition.toString(), params: null, first: true };
+    var self = this;
+    return { name: item.name, query: item.query + item.condition.toString(self.id), params: null, first: true };
 };
 
 Agent.prototype.insert = function(name, table, values, without, before, after) {
@@ -483,7 +515,7 @@ Agent.prototype.prepare = function(callback) {
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item.type === 'select' ? self._select(item) : item.type === 'delete' ? self._delete(item) : item;
 
         if (current.params instanceof SqlBuilder) {
-            current.query = current.query + current.params.toString();
+            current.query = current.query + current.params.toString(self.id);
             current.params = undefined;
         }
 
