@@ -743,7 +743,7 @@ Agent.prototype.compare = function(form, data, property) {
 
         for (var j = 0; j < formLength; j++) {
             if (form[j][property] === data[i][property]) {
-                row_update.push({ form: form[j], item: data[i] });
+                row_update.push({ form: form[j], entity: data[i] });
                 skip = true;
                 break;
             }
