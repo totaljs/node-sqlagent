@@ -197,6 +197,7 @@ function Agent(options) {
     this.last = null;
     this.id = null;
     this.isCanceled = false;
+    this.index = 0;
 }
 
 Agent.prototype = {
@@ -225,7 +226,7 @@ Agent.prototype.push = function(name, query, params, before, after) {
         before = params;
         params = query;
         query = name;
-        name = self.command.length;
+        name = self.index++;
     }
 
     self.command.push({ name: name, query: query, params: params, before: before, after: after, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
@@ -344,7 +345,7 @@ Agent.prototype.insert = function(name, table, values, without, before, after) {
         without = values;
         values = table;
         table = name;
-        name = self.command.length;
+        name = self.index++;
     }
 
     self.command.push({ type: 'insert', table: table, name: name, values: values, without: without, before: before, after: after });
@@ -363,7 +364,7 @@ Agent.prototype.select = function(name, table, schema, without, skip, take, befo
         without = schema;
         schema = table;
         table = name;
-        name = self.command.length;
+        name = self.index++;
     }
 
     var columns = [];
@@ -395,7 +396,7 @@ Agent.prototype.update = function(name, table, values, without, before, after) {
         without = values;
         values = table;
         table = name;
-        name = self.command.length;
+        name = self.index++;
     }
 
     var condition = new SqlBuilder();
@@ -411,7 +412,7 @@ Agent.prototype.delete = function(name, table, before, after) {
         after = before;
         before = table;
         table = name;
-        name = self.command.length;
+        name = self.index++;
     }
 
     var condition = new SqlBuilder();
@@ -568,6 +569,8 @@ Agent.prototype.prepare = function(callback) {
         }
 
     }, function() {
+
+        self.index = 0;
 
         if (self.autoclose) {
             self.done();
