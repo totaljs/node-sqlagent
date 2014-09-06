@@ -14,10 +14,15 @@ SqlBuilder.prototype.order = function(name, desc) {
 
     var self = this;
 
-    if (!self.order)
+    if (self._order === null)
         self._order = [];
 
-    if (typeof(desc) === 'boolean')
+    var lowered = name.toLowerCase();
+
+    if (lowered.lastIndexOf('desc') !== -1 || lowered.lastIndexOf('asc') !== -1) {
+        self._order.push(name);
+        return self;
+    } else if (typeof(desc) === 'boolean')
         desc = desc === true ? 'DESC' : 'ASC';
 
     self._order.push(SqlBuilder.column(name) + ' ' + desc);
@@ -62,7 +67,7 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 SqlBuilder.escape = function(value) {
 
     if (value === null || value === undefined)
-        return null;
+        return 'null';
 
     var type = typeof(value);
 
@@ -157,7 +162,7 @@ SqlBuilder.prototype.toString = function() {
     var order = '';
 
     if (self._order)
-        order = ' ' + self._order.join(',');
+        order = ' ORDER BY ' + self._order.join(',');
 
     if (self._skip > 0 && self._take > 0)
         plus = ' LIMIT ' + self._skip + ',' + self._take;
@@ -194,7 +199,18 @@ function Agent(options) {
     this.isCanceled = false;
 }
 
-Agent.prototype.__proto__ = new Events.EventEmitter();
+Agent.prototype = {
+    get $() {
+        return new SqlBuilder();
+    }
+};
+
+Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
+    constructor: {
+        value: Agent,
+        enumberable: false
+    }
+});
 
 Agent.prototype.query = function(name, query, params, before, after) {
     var self = this;
@@ -464,6 +480,12 @@ Agent.prototype.prepare = function(callback) {
         }
 
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item.type === 'select' ? self._select(item) : item.type === 'delete' ? self._delete(item) : item;
+
+        if (current.params instanceof SqlBuilder) {
+            current.query = current.query + current.params.toString();
+            current.params = undefined;
+        }
+
         var query = function(err, rows) {
 
             if (err) {
