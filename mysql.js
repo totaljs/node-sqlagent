@@ -187,8 +187,7 @@ SqlBuilder.prototype.toString = function(id) {
         plus = ' LIMIT ' + self._skip + ',row_count';
 
     if (self.builder.length === 0)
-        return plus;
-
+        return order + plus;
 
     var where = self.builder.join(' ');
 
