@@ -196,7 +196,6 @@ SqlBuilder.prototype.toString = function(id) {
         id = 0;
 
     where = where.replace(/\$(?=\s|$)/g, SqlBuilder.escape(id));
-
     return ' WHERE ' + where + order + plus;
 };
 
@@ -251,16 +250,7 @@ Agent.prototype.prepare = function(fn) {
 
 Agent.prototype.put = function(value) {
     var self = this;
-
-    if (value === undefined || value === null) {
-        self.isPut = false;
-        self.id = null;
-        return self;
-    }
-
-    self.command.push({ type: 'put', params: value });
-    self.isPut = true;
-
+    self.command.push({ type: 'put', params: value, disable: value === undefined || value === null });
     return self;
 };
 
@@ -353,7 +343,7 @@ Agent.prototype._insert = function(item) {
         params.push(value === undefined ? null : value);
     }
 
-    return { name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ')', params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ')', params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -390,7 +380,7 @@ Agent.prototype._update = function(item) {
         params.push(value === undefined ? null : value);
     }
 
-    return { name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(self.id), params: params, first: true };
+    return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(self.id), params: params, first: true };
 
 };
 
@@ -564,7 +554,13 @@ Agent.prototype._prepare = function(callback) {
         }
 
         if (item.type === 'put') {
-            self.id = typeof(item.params) === 'function' ? item.params() : item.params;
+
+            if (item.disable)
+                self.id = null;
+            else
+                self.id = typeof(item.params) === 'function' ? item.params() : item.params;
+
+            self.isPut = !self.disable;
             next();
             return;
         }
