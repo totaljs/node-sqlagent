@@ -316,7 +316,6 @@ Agent.prototype._insert = function(item) {
     var columns = [];
     var columns_values = [];
     var params = [];
-    var index = 1;
 
     for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
@@ -356,7 +355,6 @@ Agent.prototype._update = function(item) {
 
     var columns = [];
     var params = [];
-    var index = 1;
 
     for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
@@ -645,7 +643,7 @@ Agent.prototype._prepare = function(callback) {
                 errors.push(err.message);
                 self.command = [];
 
-                connection.rollback(function(err) {
+                self.db.rollback(function(err) {
                     if (!err)
                         return next();
                     errors.push(err.message);
