@@ -1,5 +1,7 @@
 var database = require('pg');
 var Events = require('events');
+var queries = {};
+
 require('./index');
 
 function SqlBuilder(skip, take) {
@@ -229,6 +231,11 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
+Agent.query = function(name, query) {
+    queries[name] = query;
+    return Agent;
+};
+
 Agent.prototype.prepare = function(fn) {
     var self = this;
     self.command.push({ type: 'prepare', before: fn });
@@ -256,6 +263,9 @@ Agent.prototype.push = function(name, query, params, before, after) {
         query = name;
         name = self.index++;
     }
+
+    if (queries[query])
+        query = queries[query];
 
     self.command.push({ name: name, query: query, params: params, before: before, after: after, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
     return self;
