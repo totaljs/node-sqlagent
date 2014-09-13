@@ -1,6 +1,7 @@
 var database = require('mysql');
 var Url = require('url');
 var Events = require('events');
+var queries = {};
 require('./index');
 
 function SqlBuilder(skip, take) {
