@@ -106,7 +106,7 @@ SqlBuilder.escape = function(value) {
 };
 
 SqlBuilder.column = function(name) {
-    return '"' + name + '"';
+    return name;
 };
 
 SqlBuilder.prototype.group = function(name, values) {
@@ -283,7 +283,7 @@ Agent.prototype.push = function(name, query, params, before, after) {
     if (queries[query])
         query = queries[query];
 
-    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: (query.substring(query.length - 7).toLowerCase() === 'limit 1') || (params instanceof SqlBuilder ? params._take === 1 : false) });
+    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: (query.substring(7, 15).toLowerCase() === 'first 1 ') || (params instanceof SqlBuilder ? params._take === 1 : false) });
     return self;
 };
 
@@ -594,7 +594,7 @@ Agent.prototype._prepare = function(callback) {
         var current = item.type === 'update' ? self._update(item) : item.type === 'insert' ? self._insert(item) : item.type === 'select' ? self._select(item) : item.type === 'delete' ? self._delete(item) : item;
 
         if (current.params instanceof SqlBuilder) {
-            current.query = current.query + current.params.toString(self.id);
+            current.query = current.params.toFirstSkip(current.query) + current.params.toString(self.id);
             current.params = undefined;
         }
 
@@ -606,7 +606,7 @@ Agent.prototype._prepare = function(callback) {
                     rollback = true;
             } else {
 
-                var rows = result.rows;
+                var rows = result;
 
                 if (self.isPut === false && current.type === 'insert')
                     self.id = rows[0][current.id];
@@ -626,8 +626,9 @@ Agent.prototype._prepare = function(callback) {
         if (item.type !== 'begin' && item.type !== 'end') {
             self.emit('query', current.name, current.query);
 
-            if (self.isTransaction)
+            if (isTransaction) {
                 self.transaction.query(current.query, current.params, query);
+            }
             else
                 self.db.query(current.query, current.params, query);
 
