@@ -100,7 +100,7 @@ SqlBuilder.escape = function(value) {
         return pg_escape(value.join(','));
 
     if (value instanceof Date)
-        return value.toISOString();
+        return dateToString(value);
 
     return pg_escape(value.toString());
 };
@@ -267,7 +267,7 @@ Agent.prototype.push = function(name, query, params, before, after) {
     if (queries[query])
         query = queries[query];
 
-    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
+    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: (query.substring(query.length - 7).toLowerCase() === 'limit 1') || (params instanceof SqlBuilder ? params._take === 1 : false) });
     return self;
 };
 
@@ -807,5 +807,24 @@ function pg_escape(val){
     val = val.replace(/'/g, "''").replace(/\\/g, '\\\\');
     return prefix + "'" + val + "'";
 };
+
+function dateToString(dt) {
+
+    var arr = [];
+
+    arr.push(dt.getFullYear().toString());
+    arr.push(dt.getMonth().toString());
+    arr.push(dt.getDate().toString());
+    arr.push(dt.getHours().toString());
+    arr.push(dt.getMinutes().toString());
+    arr.push(dt.getSeconds().toString());
+
+    for (var i = 0, length = arr.length; i < length; i++) {
+        if (arr[i].length === 1)
+            arr[i] = '0' + arr[i];
+    }
+
+    return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
+}
 
 module.exports = Agent;
