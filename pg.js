@@ -106,7 +106,7 @@ SqlBuilder.escape = function(value) {
 };
 
 SqlBuilder.column = function(name) {
-    return '(' + name + ')';
+    return name;
 };
 
 SqlBuilder.prototype.group = function(name, values) {
@@ -342,7 +342,7 @@ Agent.prototype._insert = function(item) {
         if (key[0] === '$')
             continue;
 
-        columns.push('(' + key + ')');
+        columns.push(key);
 
         if (value instanceof Array) {
 
@@ -397,10 +397,10 @@ Agent.prototype._update = function(item) {
                 params.push(prepareValue(value[j]));
             }
 
-            columns.push('(' + key + ')=(' + helper.join(',') + ')');
+            columns.push(key + '=(' + helper.join(',') + ')');
 
         } else {
-            columns.push('(' + key + ')=$' + (index++));
+            columns.push(key + '=$' + (index++));
             params.push(prepareValue(value));
         }
     }
