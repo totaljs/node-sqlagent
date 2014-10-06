@@ -278,7 +278,7 @@ Agent.prototype.push = function(name, query, params, before, after) {
     if (queries[query])
         query = queries[query];
 
-    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' });
+    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: query.substring(query.length - 7).toLowerCase() === 'limit 1' || (params instanceof SqlBuilder ? params._take === 1 : false) });
     return self;
 };
 
