@@ -100,7 +100,7 @@ SqlBuilder.escape = function(value) {
         return pg_escape(value.join(','));
 
     if (value instanceof Date)
-        return dateToString(value);
+        return pg_escape(dateToString(value));
 
     return pg_escape(value.toString());
 };

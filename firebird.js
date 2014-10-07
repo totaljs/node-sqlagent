@@ -100,7 +100,7 @@ SqlBuilder.escape = function(value) {
         return fb_escape(value.join(','));
 
     if (value instanceof Date)
-        return dateToString(value);
+        return fb_escape(dateToString(value));
 
     return fb_escape(value.toString());
 };
