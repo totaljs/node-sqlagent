@@ -44,6 +44,12 @@ SqlBuilder.prototype.take = function(value) {
     return self;
 };
 
+SqlBuilder.prototype.limit = function(value) {
+    var self = this;
+    self._take = value;
+    return self;
+};
+
 SqlBuilder.prototype.first = function() {
     var self = this;
     self._skip = 0;
@@ -210,6 +216,8 @@ function Agent(options) {
     this.isCanceled = false;
     this.index = 0;
     this.isPut = false;
+    this.skipCount = 0;
+    this.skips = {};
 }
 
 Agent.prototype = {
@@ -234,6 +242,19 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 Agent.query = function(name, query) {
     queries[name] = query;
     return Agent;
+};
+
+Agent.prototype.skip = function(name) {
+
+    var self = this;
+
+    if (!name) {
+        self.skipCount++;
+        return self;
+    }
+
+    self.skips[name] = true;
+    return self;
 };
 
 Agent.prototype.prepare = function(fn) {
@@ -596,6 +617,19 @@ Agent.prototype._prepare = function(callback) {
             self.isPut = !self.disable;
             next();
             return;
+        }
+
+        if (self.skipCount > 0) {
+            self.skipCount--;
+            next();
+            return;
+        }
+
+        if (typeof(item.name) === 'string') {
+            if (self.skips[item.name] === true) {
+                next();
+                return;
+            }
         }
 
         if (item.before && item.before(hasError, results, item.values, item.condition) === false) {
