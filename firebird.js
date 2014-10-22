@@ -392,7 +392,7 @@ Agent.prototype._insert = function(item) {
         if (key[0] === '$')
             continue;
 
-        columns.push('"' + key + '"');
+        columns.push(SqlBuilder.column(key));
         columns_values.push('?');
         params.push(prepareValue(value));
     }
@@ -423,7 +423,7 @@ Agent.prototype._update = function(item) {
         if (key[0] === '$')
             continue;
 
-        columns.push('"' + key + '"=?');
+        columns.push(SqlBuilder.column(key) + '=?');
         params.push(prepareValue(value));
     }
 
