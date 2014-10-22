@@ -397,7 +397,7 @@ Agent.prototype._insert = function(item) {
         params.push(prepareValue(value));
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || 'Id'), params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || 'id'), params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -462,7 +462,7 @@ Agent.prototype.insert = function(name, table, values, id, without, before, afte
         id = undefined;
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id, values: values, without: without, before: before, after: after });
+    self.command.push({ type: 'insert', table: table, name: name, id: id || 'id', values: values, without: without, before: before, after: after });
     return self;
 };
 
@@ -656,7 +656,7 @@ Agent.prototype._prepare = function(callback) {
                 var rows = result;
 
                 if (self.isPut === false && current.type === 'insert')
-                    self.id = rows[0][current.id];
+                    self.id = rows[item.id];
 
                 results[current.name] = current.first ? rows instanceof Array ? rows[0] : rows : rows;
                 self.emit('data', current.name, results);
@@ -671,7 +671,7 @@ Agent.prototype._prepare = function(callback) {
         };
 
         if (item.type !== 'begin' && item.type !== 'end') {
-            self.emit('query', current.name, current.query);
+            self.emit('query', current.name, current.query, current.params);
 
             if (isTransaction) {
                 self.transaction.query(current.query, current.params, query);
