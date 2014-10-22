@@ -1,5 +1,6 @@
 var database = require('node-firebird');
 var Events = require('events');
+var Url = require('url');
 var queries = {};
 
 require('./index');
@@ -221,6 +222,18 @@ SqlBuilder.prototype.toFirstSkip = function(query) {
 };
 
 function Agent(options) {
+
+    if (typeof(options) === 'string') {
+        var opt = Url.parse(options);
+        var auth = opt.auth.split(':');
+        options = {};
+        options.host = opt.hostname;
+        options.user = auth[0] || '';
+        options.port = opt.port;
+        options.password = auth[1] || '';
+        options.database = (opt.pathname || '').substring(1) || '';
+    }
+
     this.options = options;
     this.command = [];
     this.db = null;
