@@ -641,7 +641,7 @@ Agent.prototype._prepare = function(callback) {
         };
 
         if (item.type !== 'begin' && item.type !== 'end') {
-            self.emit('query', current.name, current.query);
+            self.emit('query', current.name, current.query, current.params);
             self.db.query(current.query, current.params, query);
             return;
         }
