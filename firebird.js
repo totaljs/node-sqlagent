@@ -232,6 +232,7 @@ function Agent(options) {
         options.port = opt.port;
         options.password = auth[1] || '';
         options.database = (opt.pathname || '').substring(1) || '';
+        options.role = (opt.hash || '').substring(1);
     }
 
     this.options = options;
