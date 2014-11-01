@@ -483,17 +483,22 @@ Agent.prototype.select = function(name, table, schema, without, skip, take, befo
     }
 
     var columns = [];
-    var arr = Object.keys(schema);
 
-    for (var i = 0, length = arr.length; i < length; i++) {
+    if (typeof(schema) === 'string') {
+        columns.push(schema);
+    } else {
+        var arr = Object.keys(schema);
 
-        if (without && without.indexOf(arr[i]) !== -1)
-            continue;
+        for (var i = 0, length = arr.length; i < length; i++) {
 
-        if (arr[i][0] === '$')
-            continue;
+            if (without && without.indexOf(arr[i]) !== -1)
+                continue;
 
-        columns.push(SqlBuilder.column(arr[i]));
+            if (arr[i][0] === '$')
+                continue;
+
+            columns.push(SqlBuilder.column(arr[i]));
+        }
     }
 
     var condition = new SqlBuilder(skip, take);
