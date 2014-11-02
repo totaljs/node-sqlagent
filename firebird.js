@@ -2,6 +2,7 @@ var database = require('node-firebird');
 var Events = require('events');
 var Url = require('url');
 var queries = {};
+var pooling = null;
 
 require('./index');
 
@@ -233,7 +234,13 @@ function Agent(options) {
         options.password = auth[1] || '';
         options.database = (opt.pathname || '').substring(1) || '';
         options.role = (opt.hash || '').substring(1);
+        options.pooling = parseInt((opt.search || '').substring(1), 10);
+        if (isNaN(options.pooling))
+            options.pooling = 4;
     }
+
+    if (!options.pooling)
+        options.pooling = 4;
 
     this.options = options;
     this.command = [];
@@ -789,7 +796,7 @@ Agent.prototype.exec = function(callback, autoclose) {
         return self;
     }
 
-    database.attach(self.options, function(err, db) {
+    var fn = function(err, db) {
 
         if (err) {
             callback.call(self, err, null);
@@ -804,10 +811,23 @@ Agent.prototype.exec = function(callback, autoclose) {
 
         self.db = db;
         self._prepare(callback);
-    });
+    };
+
+
+    if (pooling !== null) {
+        pooling.get(fn);
+        return self;
+    }
+
+    pooling = database.pool(self.options.pooling, self.options);
+    pooling.get(fn);
 
     return self;
 };
+
+function pooling(max) {
+
+}
 
 Agent.prototype.compare = function(form, data, property) {
 
