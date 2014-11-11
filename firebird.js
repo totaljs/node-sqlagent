@@ -882,7 +882,7 @@ function dateToString(dt) {
     var arr = [];
 
     arr.push(dt.getFullYear().toString());
-    arr.push(dt.getMonth().toString());
+    arr.push((dt.getMonth() + 1).toString());
     arr.push(dt.getDate().toString());
     arr.push(dt.getHours().toString());
     arr.push(dt.getMinutes().toString());

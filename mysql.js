@@ -16,7 +16,7 @@ function dateToString(dt) {
     var arr = [];
 
     arr.push(dt.getFullYear().toString());
-    arr.push(dt.getMonth().toString());
+    arr.push((dt.getMonth() + 1).toString());
     arr.push(dt.getDate().toString());
     arr.push(dt.getHours().toString());
     arr.push(dt.getMinutes().toString());
@@ -29,8 +29,6 @@ function dateToString(dt) {
 
     return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
 }
-
-console.log(dateToString(new Date()));
 
 SqlBuilder.prototype.order = function(name, desc) {
 
