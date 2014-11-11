@@ -11,6 +11,27 @@ function SqlBuilder(skip, take) {
     this._take = take >= 0 ? take : 0;
 }
 
+function dateToString(dt) {
+
+    var arr = [];
+
+    arr.push(dt.getFullYear().toString());
+    arr.push(dt.getMonth().toString());
+    arr.push(dt.getDate().toString());
+    arr.push(dt.getHours().toString());
+    arr.push(dt.getMinutes().toString());
+    arr.push(dt.getSeconds().toString());
+
+    for (var i = 1, length = arr.length; i < length; i++) {
+        if (arr[i].length === 1)
+            arr[i] = '0' + arr[i];
+    }
+
+    return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
+}
+
+console.log(dateToString(new Date()));
+
 SqlBuilder.prototype.order = function(name, desc) {
 
     var self = this;
@@ -106,7 +127,7 @@ SqlBuilder.escape = function(value) {
         return database.escape(value.join(','));
 
     if (value instanceof Date)
-        return database.escape(value.toISOString());
+        return database.escape(dateToString(value));
 
     return database.escape(value.toString());
 };

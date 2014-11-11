@@ -855,7 +855,7 @@ function dateToString(dt) {
     arr.push(dt.getMinutes().toString());
     arr.push(dt.getSeconds().toString());
 
-    for (var i = 0, length = arr.length; i < length; i++) {
+    for (var i = 1, length = arr.length; i < length; i++) {
         if (arr[i].length === 1)
             arr[i] = '0' + arr[i];
     }
