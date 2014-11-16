@@ -368,6 +368,9 @@ function prepareValue(value) {
 
     var type = typeof(value);
 
+    if (type === 'boolean')
+        value = value ? '1' : '0';
+
     if (type === 'function')
         value = value();
 
