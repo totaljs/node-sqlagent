@@ -659,7 +659,8 @@ Agent.prototype._prepare = function(callback) {
         if (current.params instanceof SqlBuilder) {
             current.query = current.params.toFirstSkip(current.query) + current.params.toString(self.id);
             current.params = undefined;
-        }
+        } else
+            current.params = prepare_params(current.params);
 
         var query = function(err, result) {
 
@@ -897,6 +898,17 @@ function dateToString(dt) {
     }
 
     return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
+}
+
+function prepare_params(params) {
+    if (!params)
+        return params;
+    for (var i = 0, length = params.length; i < length; i++) {
+        var param = params[i];
+        if (typeof(param) === 'function')
+            params[i] = param(params);
+    }
+    return params;
 }
 
 module.exports = Agent;

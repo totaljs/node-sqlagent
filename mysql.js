@@ -638,7 +638,8 @@ Agent.prototype._prepare = function(callback) {
         if (current.params instanceof SqlBuilder) {
             current.query = current.query + current.params.toString(self.id);
             current.params = undefined;
-        }
+        } else
+            current.params = prepare_params(current.params);
 
         var query = function(err, rows) {
 
@@ -826,5 +827,16 @@ Agent.prototype.compare = function(form, data, property) {
 
     return { insert: row_insert, update: row_update, remove: row_remove };
 };
+
+function prepare_params(params) {
+    if (!params)
+        return params;
+    for (var i = 0, length = params.length; i < length; i++) {
+        var param = params[i];
+        if (typeof(param) === 'function')
+            params[i] = param(params);
+    }
+    return params;
+}
 
 module.exports = Agent;
