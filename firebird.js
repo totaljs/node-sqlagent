@@ -236,11 +236,8 @@ function Agent(options) {
         options.role = (opt.hash || '').substring(1);
         options.pooling = parseInt((opt.search || '').substring(1), 10);
         if (isNaN(options.pooling))
-            options.pooling = 4;
+            options.pooling = null;
     }
-
-    if (!options.pooling)
-        options.pooling = 4;
 
     this.options = options;
     this.command = [];
@@ -817,6 +814,10 @@ Agent.prototype.exec = function(callback, autoclose) {
         self._prepare(callback);
     };
 
+    if (!pooling) {
+        database.attach(self.options, fn);
+        return self;
+    }
 
     if (pooling !== null) {
         pooling.get(fn);
