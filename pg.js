@@ -38,6 +38,10 @@ SqlBuilder.prototype.skip = function(value) {
     return self;
 };
 
+SqlBuilder.prototype.limit = function(value) {
+    return self.take(value);
+};
+
 SqlBuilder.prototype.take = function(value) {
     var self = this;
     self._take = value;
@@ -383,7 +387,7 @@ Agent.prototype._insert = function(item) {
 
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || 'Id'), params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || 'id'), params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -789,6 +793,13 @@ Agent.prototype.exec = function(callback, autoclose) {
     });
 
     return self;
+};
+
+Agent.prototype.$$exec = function(autoclose) {
+    var self = this;
+    return function(callback) {
+        return self.exec(callback, autoclose);
+    }
 };
 
 Agent.prototype.compare = function(form, data, property) {
