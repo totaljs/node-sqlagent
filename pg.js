@@ -665,8 +665,10 @@ Agent.prototype._prepare = function(callback) {
         var hasError = errors.length > 0 ? errors : null;
 
         if (item.type === 'cancel') {
-            if (item.before(hasError, results) === false) {
-                errors.push('cancel');
+
+            var output = item.before(hasError, results);
+            if (output !== true) {
+                errors.push(output === false ? 'cancel' : output);
                 self.isCanceled = true;
                 self.command = [];
                 results = null;
