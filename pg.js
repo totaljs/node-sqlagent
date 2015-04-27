@@ -9,7 +9,16 @@ function SqlBuilder(skip, take) {
     this._order = null;
     this._skip = skip >= 0 ? skip : 0;
     this._take = take >= 0 ? take : 0;
+    this._set = null;
 }
+
+SqlBuilder.prototype.set = function(name, value) {
+    var self = this;
+    if (!self._set)
+        self._set = {};
+    self._set[name] = value === '$' ? '$' : value;
+    return self;
+};
 
 SqlBuilder.prototype.order = function(name, desc) {
 
@@ -39,7 +48,7 @@ SqlBuilder.prototype.skip = function(value) {
 };
 
 SqlBuilder.prototype.limit = function(value) {
-    return self.take(value);
+    return this.take(value);
 };
 
 SqlBuilder.prototype.take = function(value) {
@@ -71,7 +80,8 @@ SqlBuilder.prototype.push = function(name, operator, value) {
     if (value === undefined) {
         value = operator;
         operator = '=';
-    }
+    } else if (operator === '!=')
+        operator = '<>';
 
     // I expect Agent.$$
     if (typeof(value) === 'function')
@@ -79,6 +89,15 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 
     self.builder.push(SqlBuilder.column(name) + operator + (value === '$' ? '$' : SqlBuilder.escape(value)));
     return self;
+};
+
+SqlBuilder.prototype.clear = function() {
+    self._take = 0;
+    self._skip = 0;
+    this._order = null;
+    this._set = null;
+    this.builder = [];
+    return this;
 };
 
 SqlBuilder.escape = function(value) {
@@ -273,6 +292,15 @@ Agent.prototype.put = function(value) {
     return self;
 };
 
+Agent.prototype.lock = function() {
+    return this.put(this.$$);
+};
+
+Agent.prototype.unlock = function() {
+    this.isPut = false;
+    return this;
+};
+
 Agent.prototype.query = function(name, query, params, before, after) {
     var self = this;
     return self.push(name, query, params, before, after);
@@ -289,11 +317,18 @@ Agent.prototype.push = function(name, query, params, before, after) {
         name = self.index++;
     }
 
+    var is = false;
+
+    if (!params) {
+        is = true;
+        params = new SqlBuilder();
+    }
+
     if (queries[query])
         query = queries[query];
 
     self.command.push({ name: name, query: query, params: params, before: before, after: after, first: (query.substring(query.length - 7).toLowerCase() === 'limit 1') || (params instanceof SqlBuilder ? params._take === 1 : false) });
-    return self;
+    return is ? params : self;
 };
 
 Agent.prototype.validate = function(fn) {
@@ -328,6 +363,10 @@ Agent.prototype.end = function() {
     return self;
 };
 
+Agent.prototype.commit = function() {
+    return this.end();
+};
+
 function prepareValue(value) {
 
     if (value === undefined)
@@ -350,6 +389,10 @@ Agent.prototype._insert = function(item) {
     var name = item.name;
     var values = item.values;
     var table = item.table;
+
+    if (values instanceof SqlBuilder)
+        values = values._set;
+
     var keys = Object.keys(values);
 
     var columns = [];
@@ -395,6 +438,10 @@ Agent.prototype._update = function(item) {
     var self = this;
     var name = item.name;
     var values = item.values;
+
+    if (values instanceof SqlBuilder)
+        values = values._set;
+
     var condition = item.condition;
     var table = item.table;
     var keys = Object.keys(values);
@@ -465,14 +512,19 @@ Agent.prototype.insert = function(name, table, values, id, without, before, afte
         id = undefined;
     }
 
+    var is = false;
+    if (!values) {
+        is = true;
+        values = new SqlBuilder();
+    }
+
     self.command.push({ type: 'insert', table: table, name: name, id: id || 'id', values: values, without: without, before: before, after: after });
-    return self;
+    return is ? values : self;
 };
 
 Agent.prototype.select = function(name, table, schema, without, skip, take, before, after) {
 
     var self = this;
-
     if (typeof(table) !== 'string') {
         after = before;
         before = take;
@@ -484,23 +536,27 @@ Agent.prototype.select = function(name, table, schema, without, skip, take, befo
         name = self.index++;
     }
 
-    if (typeof(schema) === 'string') {
-        columns.push(schema);
+    if (!schema)
+        schema = '*';
+
+    var condition = new SqlBuilder(skip, take);
+    var columns;
+
+    if (schema instanceof Array) {
+        columns = schema;
+    } else if (typeof(schema) === 'string') {
+        columns = [schema];
     } else {
         var arr = Object.keys(schema);
         for (var i = 0, length = arr.length; i < length; i++) {
-
             if (without && without.indexOf(arr[i]) !== -1)
                 continue;
-
             if (arr[i][0] === '$')
                 continue;
-
             columns.push(SqlBuilder.column(arr[i]));
         }
     }
 
-    var condition = new SqlBuilder(skip, take);
     self.command.push({ type: 'select', query: 'SELECT ' + columns.join(',') + ' FROM ' + table, name: name, values: null, without: without, before: before, after: after, condition: condition });
     return condition;
 };
@@ -508,6 +564,9 @@ Agent.prototype.select = function(name, table, schema, without, skip, take, befo
 Agent.prototype.updateOnly = function(name, table, values, only, before, after) {
 
     var model = {};
+
+    if (values instanceof SqlBuilder)
+        values = values._set;
 
     for (var i = 0, length = only.length; i < length; i++) {
         var key = only[i];
@@ -530,7 +589,16 @@ Agent.prototype.update = function(name, table, values, without, before, after) {
         name = self.index++;
     }
 
-    var condition = new SqlBuilder();
+    var condition;
+
+    if (values instanceof SqlBuilder)
+        condition = values;
+    else
+        condition = new SqlBuilder();
+
+    if (!values)
+        values = condition;
+
     self.command.push({ type: 'update', table: table, name: name, values: values, without: without, before: before, after: after, condition: condition });
     return condition;
 };
@@ -549,7 +617,10 @@ Agent.prototype.delete = function(name, table, before, after) {
     var condition = new SqlBuilder();
     self.command.push({ type: 'delete', query: 'DELETE FROM ' + table, name: name, values: null, without: null, before: before, after: after, condition: condition });
     return condition;
+};
 
+Agent.prototype.scope = function(fn) {
+    fn(new SqlBuilder());
 };
 
 Agent.prototype.remove = function(name, table, before, after) {
@@ -653,7 +724,6 @@ Agent.prototype._prepare = function(callback) {
 
         var query = function(err, result) {
 
-
             if (err) {
                 errors.push(err.message);
                 if (isTransaction)
@@ -751,7 +821,7 @@ Agent.prototype._prepare = function(callback) {
             self.emit('end', null, results);
 
             if (callback)
-                callback(null, results);
+                callback(null, self.returnIndex !== undefined ? results[self.returnIndex] : results);
 
             return;
         }
@@ -759,19 +829,19 @@ Agent.prototype._prepare = function(callback) {
         self.emit('end', err, results);
 
         if (callback)
-            callback(err, results);
+            callback(err, self.returnIndex !== undefined ? results[self.returnIndex] : results);
 
     });
 
     return self;
 };
 
-Agent.prototype.exec = function(callback, autoclose) {
+Agent.prototype.exec = function(callback, returnIndex) {
 
     var self = this;
 
-    if (autoclose !== undefined)
-        self.autoclose = autoclose;
+    if (returnIndex !== undefined && typeof(returnIndex) !== 'boolean')
+        self.returnIndex = returnIndex;
 
     if (self.command.length === 0) {
         if (callback)
@@ -789,16 +859,15 @@ Agent.prototype.exec = function(callback, autoclose) {
         self.done = done;
         self.db = client;
         self._prepare(callback);
-
     });
 
     return self;
 };
 
-Agent.prototype.$$exec = function(autoclose) {
+Agent.prototype.$$exec = function(returnIndex) {
     var self = this;
     return function(callback) {
-        return self.exec(callback, autoclose);
+        return self.exec(callback, returnIndex);
     }
 };
 
