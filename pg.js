@@ -117,7 +117,7 @@ SqlBuilder.escape = function(value) {
     }
 
     if (type === 'boolean')
-        return value === true ? '1' : '0';
+        return value === true ? 'true' : 'false';
 
     if (type === 'number')
         return value.toString();
@@ -327,7 +327,7 @@ Agent.prototype.push = function(name, query, params, before, after) {
     if (queries[query])
         query = queries[query];
 
-    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: (query.substring(query.length - 7).toLowerCase() === 'limit 1') || (params instanceof SqlBuilder ? params._take === 1 : false) });
+    self.command.push({ name: name, query: query, params: params, before: before, after: after, first: isFIRST(query) });
     return is ? params : self;
 };
 
@@ -750,6 +750,8 @@ Agent.prototype._prepare = function(callback) {
         };
 
         if (item.type !== 'begin' && item.type !== 'end') {
+            if (!current.first)
+                current.first = isFIRST(current.query);
             self.emit('query', current.name, current.query, current.params);
             self.db.query({ text: current.query }, current.params, query);
             return;
@@ -955,6 +957,10 @@ function prepare_params(params) {
             params[i] = param(params);
     }
     return params;
+}
+
+function isFIRST(query) {
+    return query.substring(query.length - 7).toLowerCase() === 'limit 1';
 }
 
 module.exports = Agent;
