@@ -255,6 +255,9 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
+// Default primary key
+Agent.primaryKey = 'id';
+
 Agent.query = function(name, query) {
     queries[name] = query;
     return Agent;
@@ -419,7 +422,7 @@ Agent.prototype._insert = function(item) {
         }
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || 'id'), params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || Agent.primaryKey), params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -499,7 +502,7 @@ Agent.prototype.insert = function(name, table, values, id, without) {
         values = new SqlBuilder();
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id || 'id', values: values, without: without });
+    self.command.push({ type: 'insert', table: table, name: name, id: id || Agent.primaryKey, values: values, without: without });
     return is ? values : self;
 };
 
@@ -630,15 +633,15 @@ Agent.prototype._prepare = function(callback) {
     self.command.sqlagent(function(item, next) {
 
         if (item.type === 'validate') {
-            var output = item.fn(errors, results);
-            if (output === true)
-                return next();
-
-            // reason
-            if (typeof(output) === 'string')
-                errors.push(output);
-
-            return next(false);
+            item.fn(errors, results, function(output) {
+                if (output === true || output === undefined)
+                    return next();
+                // reason
+                if (typeof(output) === 'string')
+                    errors.push(output);
+                next(false);
+            });
+            return;
         }
 
         if (item.type === 'prepare') {
@@ -648,7 +651,7 @@ Agent.prototype._prepare = function(callback) {
             return;
         }
 
-        if (item.type === 'unlock') {
+        if (item.type === 'unput') {
             self.isPut = false;
             next();
             return;
@@ -868,6 +871,8 @@ function prepare_params(params) {
 }
 
 function isFIRST(query) {
+    if (!query)
+        return false;
     return query.substring(query.length - 7).toLowerCase() === 'limit 1';
 }
 
