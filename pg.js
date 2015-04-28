@@ -12,6 +12,12 @@ function SqlBuilder(skip, take) {
     this._set = null;
 }
 
+SqlBuilder.prototype = {
+    get data() {
+        return this._set;
+    }
+};
+
 SqlBuilder.prototype.set = function(name, value) {
     var self = this;
     if (!self._set)
@@ -543,6 +549,54 @@ Agent.prototype.select = function(name, table, schema, without, skip, take) {
     return condition;
 };
 
+Agent.prototype.count = function(name, table) {
+    var self = this;
+    if (typeof(table) !== 'string') {
+        table = name;
+        name = self.index++;
+    }
+
+    var condition = new SqlBuilder();
+    self.command.push({ type: 'query', query: 'SELECT COUNT(*) as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    return condition;
+};
+
+Agent.prototype.max = function(name, table, column) {
+    var self = this;
+    if (typeof(table) !== 'string') {
+        table = name;
+        name = self.index++;
+    }
+
+    var condition = new SqlBuilder();
+    self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    return condition;
+};
+
+Agent.prototype.min = function(name, table, column) {
+    var self = this;
+    if (typeof(table) !== 'string') {
+        table = name;
+        name = self.index++;
+    }
+
+    var condition = new SqlBuilder();
+    self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    return condition;
+};
+
+Agent.prototype.avg = function(name, table, column) {
+    var self = this;
+    if (typeof(table) !== 'string') {
+        table = name;
+        name = self.index++;
+    }
+
+    var condition = new SqlBuilder();
+    self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    return condition;
+};
+
 Agent.prototype.updateOnly = function(name, table, values, only) {
 
     var model = {};
@@ -715,7 +769,16 @@ Agent.prototype._prepare = function(callback) {
                 var rows = result.rows;
                 if (self.isPut === false && current.type === 'insert')
                     self.id = rows[0][item.id];
-                results[current.name] = current.first ? rows instanceof Array ? rows[0] : rows : rows;
+
+                if (current.first && current.column) {
+                    if (rows.length > 0)
+                        results[current.name] = rows[0][current.column];
+                }
+                else if (current.first)
+                    results[current.name] = rows instanceof Array ? rows[0] : rows;
+                else
+                    results[current.name] = rows;
+
                 self.emit('data', current.name, results);
             }
             self.last = item.name;
