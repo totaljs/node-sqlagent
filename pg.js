@@ -26,6 +26,10 @@ SqlBuilder.prototype.set = function(name, value) {
     return self;
 };
 
+SqlBuilder.prototype.sort = function(name, desc) {
+    return this.order(name, desc);
+};
+
 SqlBuilder.prototype.order = function(name, desc) {
 
     var self = this;
