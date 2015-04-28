@@ -290,6 +290,9 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 // Default primary key
 Agent.primaryKey = 'id';
 
+// Debug mode (output to console)
+Agent.debug = false;
+
 Agent.query = function(name, query) {
     queries[name] = query;
     return Agent;
@@ -356,19 +359,34 @@ Agent.prototype.push = function(name, query, params) {
     return is ? params : self;
 };
 
-Agent.prototype.validate = function(fn) {
+Agent.prototype.validate = function(fn, error) {
     var self = this;
-    if (fn === undefined) {
-        fn = function(err, results) {
-            if (self.last === null)
-                return false;
-            var r = results[self.last];
-            if (r instanceof Array)
-                return r.length > 0;
-            return r !== null && r !== undefined;
-        };
+    var type = typeof(fn);
+
+    if (type === 'string' && error === undefined) {
+        // checks the last result
+        error = fn;
+        fn = undefined;
     }
-    self.command.push({ type: 'validate', fn: fn });
+
+    if (type === 'function') {
+        self.command.push({ type: 'validate', fn: fn, error: error });
+        return self;
+    }
+
+    var exec = function(err, results, next) {
+        var id = fn === undefined || fn === null ? self.last : fn;
+        if (id === null || id === undefined)
+            return next(false);
+        var r = results[id];
+        if (r instanceof Array)
+            return next(r.length > 0);
+        if (r !== null && r !== undefined)
+            return next(true);
+        next(false);
+    };
+
+    self.command.push({ type: 'validate', fn: exec, error: error });
     return self;
 };
 
@@ -719,6 +737,8 @@ Agent.prototype._prepare = function(callback) {
                 // reason
                 if (typeof(output) === 'string')
                     errors.push(output);
+                else if (item.error)
+                    errors.push(item.error);
                 next(false);
             });
             return;
@@ -814,12 +834,20 @@ Agent.prototype._prepare = function(callback) {
         if (item.type !== 'begin' && item.type !== 'end') {
             if (!current.first)
                 current.first = isFIRST(current.query);
+
+            if (Agent.debug)
+                console.log(self.debugname, current.name, current.query);
+
             self.emit('query', current.name, current.query, current.params);
             self.db.query({ text: current.query }, current.params, query);
             return;
         }
 
         if (item.type === 'begin') {
+
+            if (Agent.debug)
+                console.log(self.debugname, 'begin transaction');
+
             self.db.query('BEGIN', function(err) {
                 if (err) {
                     errors.push(err.message);
@@ -837,6 +865,10 @@ Agent.prototype._prepare = function(callback) {
         if (item.type === 'end') {
             isTransaction = false;
             if (rollback) {
+
+                if (Agent.debug)
+                    console.log(self.debugname, 'rollback transaction');
+
                 self.db.query('ROLLBACK', function(err) {
                     if (!err)
                         return next();
@@ -846,6 +878,9 @@ Agent.prototype._prepare = function(callback) {
                 });
                 return;
             }
+
+            if (Agent.debug)
+                console.log(self.debugname, 'commit transaction');
 
             self.db.query('COMMIT', function(err) {
                 if (!err)
@@ -875,6 +910,9 @@ Agent.prototype._prepare = function(callback) {
         } else if (errors.length > 0)
             err = errors;
 
+        if (Agent.debug)
+            console.log(self.debugname, '----- done (' + (Date.now() - self.debugtime) + ' ms)');
+
         self.emit('end', err, results);
         if (callback)
             callback(err, self.returnIndex !== undefined ? results[self.returnIndex] : results);
@@ -887,6 +925,11 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
     var self = this;
 
+    if (Agent.debug) {
+        self.debugname = 'sqlagent/pg (' + Math.floor(Math.random() * 1000) + ')';
+        self.debugtime = Date.now();
+    }
+
     if (returnIndex !== undefined && typeof(returnIndex) !== 'boolean')
         self.returnIndex = returnIndex;
     else
@@ -898,6 +941,8 @@ Agent.prototype.exec = function(callback, returnIndex) {
         return self;
     }
 
+    if (Agent.debug)
+        console.log(self.debugname, '----- exec');
     database.connect(self.options, function(err, client, done) {
 
         if (err) {
@@ -965,7 +1010,8 @@ function isFIRST(query) {
     return query.substring(query.length - 7).toLowerCase() === 'limit 1';
 }
 
-Agent.init = function(conn) {
+Agent.init = function(conn, debug) {
+    Agent.debug = debug ? true : false;
     framework.database = function() {
         return new Agent(conn);
     };
