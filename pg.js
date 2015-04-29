@@ -101,12 +101,6 @@ SqlBuilder.prototype.take = function(value) {
     return self;
 };
 
-SqlBuilder.prototype.take = function(value) {
-    var self = this;
-    self._take = value;
-    return self;
-};
-
 SqlBuilder.prototype.first = function() {
     var self = this;
     self._skip = 0;
@@ -182,15 +176,15 @@ SqlBuilder.column = function(name) {
     return name;
 };
 
-SqlBuilder.prototype.group = function(name, values) {
+SqlBuilder.prototype.group = function(names) {
     var self = this;
-    self.builder.push(SqlBuilder.column(name) + ' GROUP BY ' + (values instanceof Array ? values.join(',') : values));
+    self.builder.push('GROUP BY ' + (names instanceof Array ? names.join(',') : names));
     return self;
 };
 
 SqlBuilder.prototype.having = function(condition) {
     var self = this;
-    self.builder.push(condition);
+    self.builder.push('HAVING ' + condition);
     return self;
 };
 
@@ -765,6 +759,14 @@ Agent.prototype._prepare = function(callback) {
                     self.errors.push(output);
                 else if (item.error)
                     self.errors.push(item.error);
+
+                // we have error
+                if (isTransaction) {
+                    self.command.length = 0;
+                    rollback = true;
+                    self.end();
+                }
+
                 next(false);
             });
             return;
