@@ -115,8 +115,7 @@ sql.exec(function(err, response) {
 
 ### Delete
 
-__instance.delete([name], table)__:
-__instance.remove([name], table)__:
+__instance.delete([name], table)__, __instance.remove([name], table)__:
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -146,9 +145,7 @@ sql.exec(function(err, response) {
 });
 ```
 
-__instance.max([name], table, column)__:
-__instance.min([name], table, column)__:
-__instance.avg([name], table, column)__:
+__instance.max([name], table, column)__, __instance.min([name], table, column)__, __instance.avg([name], table, column)__:
 
 - __returns__ SqlBuilder
 
@@ -293,8 +290,7 @@ adds a value for update or insert
 __builder.set(obj)__:
 adds a value for update or insert
 
-__builder.sort(name, [desc])__:
-__builder.order(name, [desc])__:
+__builder.sort(name, [desc])__, __builder.order(name, [desc])__:
 adds sorting
 
 - `name` (String) a column name
@@ -303,8 +299,7 @@ adds sorting
 __builder.skip(value)__:
 skips records
 
-__builder.take(value)__:
-__builder.limit(value)__:
+__builder.take(value)__, __builder.limit(value)__:
 takes records
 
 __builder.page(page, maxItemsPerPage)__:
@@ -313,8 +308,7 @@ sets automatically sql.skip() and sql.take()
 __builder.first()__:
 sets sql.take(1)
 
-__builder.where(name, [operator], value)__:
-__builder.push(name, [operator], value)__:
+__builder.where(name, [operator], value)__, __builder.push(name, [operator], value)__:
 sets a where condition.
 
 - `name` (String) a column name
