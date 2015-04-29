@@ -22,7 +22,20 @@ SqlBuilder.prototype.set = function(name, value) {
     var self = this;
     if (!self._set)
         self._set = {};
-    self._set[name] = value === '$' ? '$' : value;
+
+    if (typeof(name) === 'string') {
+        self._set[name] = value === '$' ? '$' : value;
+        return self;
+    }
+
+    var keys = Object.keys(name);
+
+    for (var i = 0, length = keys.length; i < length; i++) {
+        var key = keys[i];
+        var val = name[key];
+        self._set[key] = val === '$' ? '$' : val;
+    }
+
     return self;
 };
 
@@ -254,7 +267,7 @@ SqlBuilder.prototype.toString = function(id) {
     return ' WHERE ' + where + order + plus;
 };
 
-function Agent(options) {
+function Agent(options, error) {
     this.options = options;
     this.command = [];
     this.db = null;
@@ -266,6 +279,9 @@ function Agent(options) {
     this.isPut = false;
     this.skipCount = 0;
     this.skips = {};
+    this.isErrorBuilder = global.ErrorBuilder ? true : false;
+    this.errors = error instanceof global.ErrorBuilder ? error : null;
+    this.time;
 }
 
 Agent.prototype = {
@@ -380,8 +396,8 @@ Agent.prototype.validate = function(fn, error) {
             return next(false);
         var r = results[id];
         if (r instanceof Array)
-            return next(r.length > 0);
-        if (r !== null && r !== undefined)
+            return next(r.length);
+        if (r)
             return next(true);
         next(false);
     };
@@ -593,6 +609,15 @@ Agent.prototype.select = function(name, table, schema, without, skip, take) {
     return condition;
 };
 
+Agent.prototype.builder = function(name) {
+    var self = this;
+    for (var i = 0, length = self.command.length; i < length; i++) {
+        var command = self.command[i];
+        if (command.name === name)
+            return command.condition;
+    }
+};
+
 Agent.prototype.count = function(name, table) {
     var self = this;
     if (typeof(table) !== 'string') {
@@ -722,30 +747,31 @@ Agent.prototype.close = function() {
 Agent.prototype._prepare = function(callback) {
 
     var results = {};
-    var isErrorBuilder = global.ErrorBuilder ? true : false;
-    var errors = isErrorBuilder ? new global.ErrorBuilder() : [];
     var self = this;
     var rollback = false;
     var isTransaction = false;
 
+    if (!self.errors)
+        self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
+
     self.command.sqlagent(function(item, next) {
 
         if (item.type === 'validate') {
-            item.fn(errors, results, function(output) {
+            item.fn(self.errors, results, function(output) {
                 if (output === true || output === undefined)
                     return next();
                 // reason
                 if (typeof(output) === 'string')
-                    errors.push(output);
+                    self.errors.push(output);
                 else if (item.error)
-                    errors.push(item.error);
+                    self.errors.push(item.error);
                 next(false);
             });
             return;
         }
 
         if (item.type === 'prepare') {
-            item.fn(errors, results, function() {
+            item.fn(self.errors, results, function() {
                 next();
             });
             return;
@@ -808,7 +834,7 @@ Agent.prototype._prepare = function(callback) {
 
         var query = function(err, result) {
             if (err) {
-                errors.push(err.message);
+                self.errors.push(err.message);
                 if (isTransaction)
                     rollback = true;
             } else {
@@ -850,7 +876,7 @@ Agent.prototype._prepare = function(callback) {
 
             self.db.query('BEGIN', function(err) {
                 if (err) {
-                    errors.push(err.message);
+                    self.errors.push(err.message);
                     self.command = [];
                     next();
                     return;
@@ -885,12 +911,12 @@ Agent.prototype._prepare = function(callback) {
             self.db.query('COMMIT', function(err) {
                 if (!err)
                     return next();
-                errors.push(err.message);
+                self.errors.push(err.message);
                 self.command = [];
                 self.db.query('ROLLBACK', function(err) {
                     if (!err)
                         return next();
-                    errors.push(err.message);
+                    self.errors.push(err.message);
                     next();
                 });
             });
@@ -898,22 +924,24 @@ Agent.prototype._prepare = function(callback) {
         }
 
     }, function() {
+        self.time = Date.now() - self.debugtime;
         self.index = 0;
         if (self.done)
             self.done();
         self.done = null;
         var err = null;
 
-        if (isErrorBuilder) {
-            if (errors.hasError())
-                err = errors;
-        } else if (errors.length > 0)
-            err = errors;
+        if (self.isErrorBuilder) {
+            if (self.errors.hasError())
+                err = self.errors;
+        } else if (self.errors.length > 0)
+            err = self.errors;
 
         if (Agent.debug)
-            console.log(self.debugname, '----- done (' + (Date.now() - self.debugtime) + ' ms)');
+            console.log(self.debugname, '----- done (' + self.time + ' ms)');
 
-        self.emit('end', err, results);
+        self.emit('end', err, results, self.time);
+
         if (callback)
             callback(err, self.returnIndex !== undefined ? results[self.returnIndex] : results);
     });
@@ -943,6 +971,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
     if (Agent.debug)
         console.log(self.debugname, '----- exec');
+
     database.connect(self.options, function(err, client, done) {
 
         if (err) {
@@ -1012,8 +1041,8 @@ function isFIRST(query) {
 
 Agent.init = function(conn, debug) {
     Agent.debug = debug ? true : false;
-    framework.database = function() {
-        return new Agent(conn);
+    framework.database = function(errorBuilder) {
+        return new Agent(conn, errorBuilder);
     };
 };
 
