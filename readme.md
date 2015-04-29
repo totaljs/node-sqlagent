@@ -37,7 +37,7 @@ var sql = DATABASE();
 
 __instance.select([name], table, [columns])__:
 
-- `name` (String) is identificator for results, optional (default: internal indexer)
+- `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
 - `colums` (String, Array or Object (keys will be as columns))
 - __returns__ SqlBuilder
@@ -69,7 +69,7 @@ sql.exec(function(err, response) {
 
 __instance.insert([name], table, [value], [primaryId])__:
 
-- `name` (String) is identificator for results, optional (default: internal indexer)
+- `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
 - `value` (Object) optional (value can be SqlBuilder)
 - __returns__ if value is undefined then __SqlBuilder__ otherwise __SqlAgent__
@@ -91,7 +91,7 @@ sql.exec(function(err, response) {
 
 __instance.update([name], table, [value])__:
 
-- `name` (String) is identificator for results, optional (default: internal indexer)
+- `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
 - `value` (Object) optional (value can be SqlBuilder)
 - __returns__ if value is undefined then __SqlBuilder__ otherwise __SqlAgent__
@@ -118,7 +118,7 @@ sql.exec(function(err, response) {
 __instance.delete([name], table)__:
 __instance.remove([name], table)__:
 
-- `name` (String) is identificator for results, optional (default: internal indexer)
+- `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
 - __returns__ SqlBuilder
 
@@ -212,6 +212,8 @@ sql.exec();
 
 ### Preparing (dependencies)
 
+- you can use multiple `sql.prepare()`
+
 ```javascript
 var user = sql.update('user', 'tbl_user');
 user.where('id', 20);
@@ -236,6 +238,8 @@ sql.exec();
 ```
 
 ### Validation
+
+- you can use multiple `sql.validate()`
 
 ```javascript
 var select = sql.select('address', 'tbl_address');
@@ -331,7 +335,7 @@ __builder.and()__:
 adds AND to SQL query
 
 __builder.or()__:
-adds AND to SQL query
+adds OR to SQL query
 
 __builder.in(name, value)__:
 adds IN to SQL query
