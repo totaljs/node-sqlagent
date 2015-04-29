@@ -35,7 +35,7 @@ var sql = DATABASE();
 
 ### Select
 
-#### __instance.select([name], table, [columns])__:
+##### __instance.select([name], table, [columns])__:
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -67,7 +67,7 @@ sql.exec(function(err, response) {
 
 ### Insert
 
-#### __instance.insert([name], table, [value], [primaryId])__:
+##### __instance.insert([name], table, [value], [primaryId])__:
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -89,7 +89,7 @@ sql.exec(function(err, response) {
 
 ### Update
 
-#### __instance.update([name], table, [value])__:
+##### __instance.update([name], table, [value])__:
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -115,8 +115,8 @@ sql.exec(function(err, response) {
 
 ### Delete
 
-#### __instance.delete([name], table)__:
-#### __instance.remove([name], table)__:
+##### __instance.delete([name], table)__:
+##### __instance.remove([name], table)__:
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -133,7 +133,7 @@ sql.exec(function(err, response) {
 
 ### Aggregation
 
-#### __instance.count([name], table)__:
+##### __instance.count([name], table)__:
 
 - __returns__ SqlBuilder
 
@@ -146,9 +146,9 @@ sql.exec(function(err, response) {
 });
 ```
 
-#### __instance.max([name], table, column)__:
-#### __instance.min([name], table, column)__:
-#### __instance.avg([name], table, column)__:
+##### __instance.max([name], table, column)__:
+##### __instance.min([name], table, column)__:
+##### __instance.avg([name], table, column)__:
 
 - __returns__ SqlBuilder
 
@@ -284,78 +284,78 @@ sql.exec(function(err, response) {
 })
 ```
 
-#### __builder.set(name, value)__:
+##### __builder.set(name, value)__:
 adds a value for update or insert
 
 - `name` (String) a column name
 - `value` (Object) a value
 
-#### __builder.set(obj)__:
+##### __builder.set(obj)__:
 adds a value for update or insert
 
-#### __builder.sort(name, [desc])__:
-#### __builder.order(name, [desc])__:
+##### __builder.sort(name, [desc])__:
+##### __builder.order(name, [desc])__:
 adds sorting
 
 - `name` (String) a column name
 - `desc` (Boolean), default: false
 
-#### __builder.skip(value)__:
+##### __builder.skip(value)__:
 skips records
 
-#### __builder.take(value)__:
-#### __builder.limit(value)__:
+##### __builder.take(value)__:
+##### __builder.limit(value)__:
 takes records
 
-#### __builder.page(page, maxItemsPerPage)__:
+##### __builder.page(page, maxItemsPerPage)__:
 sets automatically sql.skip() and sql.take()
 
-#### __builder.first()__:
+##### __builder.first()__:
 sets sql.take(1)
 
-#### __builder.where(name, [operator], value)__:
-#### __builder.push(name, [operator], value)__:
+##### __builder.where(name, [operator], value)__:
+##### __builder.push(name, [operator], value)__:
 sets a where condition.
 
 - `name` (String) a column name
 - `operator` (String), optional `>`, `<`, `<>`, `=` (default)
 - `value` (Object)
 
-#### __builder.group(names)__:
+##### __builder.group(names)__:
 creates a group by in SQL query
 
 - `name` (String or String Array)
 
-#### __builder.having(condition)__:
+##### __builder.having(condition)__:
 adds having in SQL query
 
 - `condition` (String), e.g. `MAX(Id)>0`
 
-#### __builder.and()__:
+##### __builder.and()__:
 adds AND to SQL query
 
-#### __builder.or()__:
+##### __builder.or()__:
 adds OR to SQL query
 
-#### __builder.in(name, value)__:
+##### __builder.in(name, value)__:
 adds IN to SQL query
 
 - `name` (String), a column name
 - `value` (String, Number or String Array, Number Array)
 
-#### __builder.between(name, a, b)__:
+##### __builder.between(name, a, b)__:
 adds between to SQL query
 
 - `name` (String), a column name
 - `a` (Number)
 - `b` (Number)
 
-#### __builder.sql(query)__:
+##### __builder.sql(query)__:
 adds a custom SQL to SQL query
 
 - `query` (String)
 
-#### __builder.toString()__:
+##### __builder.toString()__:
 creates escaped SQL query (internal)
 
 
