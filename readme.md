@@ -427,7 +427,7 @@ sql.exec(function(err, response) {
 
 ---
 
-### builder.set()
+#### builder.set()
 
 ```plain
 builder.set(name, value)
@@ -447,7 +447,7 @@ adds a value for update or insert
 
 ---
 
-### builder.sort()
+#### builder.sort()
 
 ```plain
 builder.sort(name, [desc])
@@ -460,7 +460,7 @@ adds sorting
 
 ---
 
-### builder.skip()
+#### builder.skip()
 
 ```plain
 builder.skip(value)
@@ -469,7 +469,7 @@ skips records
 
 ---
 
-### builder.take()
+#### builder.take()
 
 ```plain
 builder.take(value)
@@ -479,7 +479,7 @@ takes records
 
 ---
 
-### builder.page()
+#### builder.page()
 
 ```plain
 builder.page(page, maxItemsPerPage)
@@ -488,7 +488,7 @@ sets automatically sql.skip() and sql.take()
 
 ---
 
-### builder.first()
+#### builder.first()
 
 ```plain
 builder.first()
@@ -497,7 +497,7 @@ sets sql.take(1)
 
 ---
 
-### builder.where()
+#### builder.where()
 
 ```plain
 builder.where(name, [operator], value)
@@ -511,7 +511,7 @@ add a condition after SQL WHERE
 
 ---
 
-### builder.group()
+#### builder.group()
 
 ```plain
 builder.group(names)
@@ -522,7 +522,7 @@ creates a group by in SQL query
 
 ---
 
-### builder.having()
+#### builder.having()
 
 ```plain
 builder.having(condition)
@@ -533,7 +533,7 @@ adds having in SQL query
 
 ---
 
-### builder.and()
+#### builder.and()
 
 ```plain
 builder.and()
@@ -542,7 +542,7 @@ adds AND to SQL query
 
 ---
 
-### builder.or()
+#### builder.or()
 
 ```plain
 builder.or()
@@ -551,7 +551,7 @@ adds OR to SQL query
 
 ---
 
-### builder.in()
+#### builder.in()
 
 ```plain
 builder.in(name, value)
@@ -563,7 +563,7 @@ adds IN to SQL query
 
 ---
 
-### builder.between()
+#### builder.between()
 
 ```plain
 builder.between(name, a, b)
@@ -576,7 +576,20 @@ adds between to SQL query
 
 ---
 
-### builder.sql()
+#### builder.like()
+
+```plain
+builder.like(name, value, [where])
+```
+adds like command
+
+- `name` (String) a column name
+- `value` (String) a value to search
+- `where` (String) optional, e.g. `beg`, `end`, `*` ==> %search (beg), search% (end), %search% (*)
+
+---
+
+#### builder.sql()
 
 ```plain
 builder.sql(query)
@@ -587,7 +600,7 @@ adds a custom SQL to SQL query
 
 ---
 
-### builder.toString()
+#### builder.toString()
 
 ```plain
 builder.toString()

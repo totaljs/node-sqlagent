@@ -10,6 +10,7 @@ function SqlBuilder(skip, take) {
     this._skip = skip >= 0 ? skip : 0;
     this._take = take >= 0 ? take : 0;
     this._set = null;
+    this.hasOperator = false;
 }
 
 SqlBuilder.prototype = {
@@ -125,16 +126,26 @@ SqlBuilder.prototype.push = function(name, operator, value) {
     if (typeof(value) === 'function')
         value = '$';
 
+    self.checkOperator();
     self.builder.push(SqlBuilder.column(name) + operator + (value === '$' ? '$' : SqlBuilder.escape(value)));
     return self;
 };
 
+SqlBuilder.prototype.checkOperator = function() {
+    var self = this;
+    if (!self.hasOperator)
+        self.and();
+    self.hasOperator = false;
+    return self;
+};
+
 SqlBuilder.prototype.clear = function() {
-    self._take = 0;
-    self._skip = 0;
+    this._take = 0;
+    this._skip = 0;
     this._order = null;
     this._set = null;
     this.builder = [];
+    this.hasOperator = false;
     return this;
 };
 
@@ -192,6 +203,7 @@ SqlBuilder.prototype.and = function() {
     var self = this;
     if (self.builder.length === 0)
         return self;
+    self.hasOperator = true;
     self.builder.push('AND');
     return self;
 };
@@ -208,6 +220,7 @@ SqlBuilder.prototype.in = function(name, value) {
     var self = this;
     if (!(value instanceof Array))
         return self;
+    self.checkOperator();
     var values = [];
     for (var i = 0, length = value.length; i < length; i++)
         values.push(SqlBuilder.escape(value[i]));
@@ -215,20 +228,39 @@ SqlBuilder.prototype.in = function(name, value) {
     return self;
 };
 
-SqlBuilder.prototype.like = function(name, value) {
+SqlBuilder.prototype.like = function(name, value, where) {
     var self = this;
-    self.builder.push(SqlBuilder.column(name) + ' LIKE ' + SqlBuilder.escape(value));
+    var search = SqlBuilder.escape(value);
+
+    self.checkOperator();
+
+    switch (where) {
+        case 'beg':
+        case 'begin':
+            search = '%' + search;
+            break;
+        case '*':
+            search = '%' + search + '%';
+            break;
+        case 'end':
+            search += '%';
+            break;
+    }
+
+    self.builder.push(SqlBuilder.column(name) + ' LIKE ' + );
     return self;
 };
 
 SqlBuilder.prototype.between = function(name, valueA, valueB) {
     var self = this;
+    self.checkOperator();
     self.builder.push(SqlBuilder.column(name) + ' BETWEEN ' + valueA + ' AND ' + valueB);
     return self;
 };
 
 SqlBuilder.prototype.sql = function(sql) {
     var self = this;
+    self.checkOperator();
     self.builder.push(sql);
     return self;
 };
