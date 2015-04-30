@@ -24,7 +24,7 @@ var sql = new Agent('connetion-string-to-postgresql');
 
 ```javascript
 // Below code rewrites total.js database prototype
-require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]);
+require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug is by default: false
 
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
@@ -409,7 +409,37 @@ sql.exec(function(err, response) {
 });
 ```
 
+## Bonus
+
+### Measuring time
+
+```javascript
+sql.exec(function(err, response) {
+    console.log(sql.time + ' ms');
+    // or
+    // console.log(this.time)
+});
+```
+
+### Events
+
+```
+sql.on('query', function(name, query, params){});
+sql.on('data', function(name, response){});
+sql.on('end', function(err, response, time){});
+```
+
+### Debug mode
+
+Debug mode writes each query to console.
+
+```javascript
+sql.debug = true;
+```
+
 ## SqlBuilder
+
+- automatically adds `and` if is not added between e.g. 2x where
 
 ```javascript
 // Creates SqlBuilder
@@ -599,6 +629,24 @@ adds a custom SQL to SQL query
 - `query` (String)
 
 ---
+
+#### builder.scope()
+
+```plain
+builder.scope(fn);
+```
+adds a scope `()`
+
+```javascript
+builder.where('user', 'person');
+builder.and();
+builder.scope(function() {
+    builder.where('type', 20);
+    builder.or();
+    builder.where('age', '<', 20);
+});
+// creates: user='person' AND (type=20 OR age<20)
+```
 
 #### builder.toString()
 

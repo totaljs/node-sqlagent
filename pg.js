@@ -216,6 +216,16 @@ SqlBuilder.prototype.or = function() {
     return self;
 };
 
+SqlBuilder.prototype.scope = function(fn) {
+    var self = this;
+    self.checkOperator();
+    self.builder.push('(');
+    self.hasOperator = true;
+    fn.call(self);
+    self.builder.push(')');
+    return self;
+};
+
 SqlBuilder.prototype.in = function(name, value) {
     var self = this;
     if (!(value instanceof Array))
@@ -230,24 +240,27 @@ SqlBuilder.prototype.in = function(name, value) {
 
 SqlBuilder.prototype.like = function(name, value, where) {
     var self = this;
-    var search = SqlBuilder.escape(value);
+    var search;
 
     self.checkOperator();
 
     switch (where) {
         case 'beg':
         case 'begin':
-            search = '%' + search;
+            search = SqlBuilder.escape('%' + value);
             break;
         case '*':
-            search = '%' + search + '%';
+            search = SqlBuilder.escape('%' + value + '%');
             break;
         case 'end':
-            search += '%';
+            search = SqlBuilder.escape(value + '%');
+            break;
+        default:
+            search = SqlBuilder.escape(value);
             break;
     }
 
-    self.builder.push(SqlBuilder.column(name) + ' LIKE ' + );
+    self.builder.push(SqlBuilder.column(name) + ' LIKE ' + search);
     return self;
 };
 
@@ -261,6 +274,15 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 SqlBuilder.prototype.sql = function(sql) {
     var self = this;
     self.checkOperator();
+
+    if (arguments.length > 1) {
+        var indexer = 1;
+        var argv = arguments;
+        sql = sql.replace(/\?/g, function() {
+            return SqlBuilder.escape(argv[indexer++]);
+        });
+    }
+
     self.builder.push(sql);
     return self;
 };
