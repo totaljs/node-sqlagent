@@ -533,23 +533,18 @@ Agent.prototype._insert = function(item) {
         if (key[0] === '$')
             continue;
 
-        columns.push(key);
+        columns.push('`' + key + '`');
+        columns_values.push('?');
 
-        if (value instanceof Array) {
+        var type = typeof(value);
 
-            var helper = [];
+        if (type === 'function')
+            value = value();
 
-            for (var j = 0, sublength = value.length; j < sublength; j++) {
-                helper.push('$' + index++);
-                params.push(prepareValue(value[j]));
-            }
+        if (type === 'string')
+            value = value.trim();
 
-            columns_values.push('(' + helper.join(',') + ')');
-
-        } else {
-            columns_values.push('$' + index++);
-            params.push(prepareValue(value));
-        }
+        params.push(value === undefined ? null : value);
     }
 
     return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ')', params: params, first: true };
@@ -581,21 +576,15 @@ Agent.prototype._update = function(item) {
         if (key[0] === '$')
             continue;
 
-        if (value instanceof Array) {
+        var type = typeof(value);
+        if (type === 'function')
+            value = value();
 
-            var helper = [];
+        if (type === 'string')
+            value = value.trim();
 
-            for (var j = 0, sublength = value.length; j < sublength; j++) {
-                helper.push('$' + (index++));
-                params.push(prepareValue(value[j]));
-            }
-
-            columns.push(key + '=(' + helper.join(',') + ')');
-
-        } else {
-            columns.push(key + '=$' + (index++));
-            params.push(prepareValue(value));
-        }
+        columns.push('`' + key + '`=?');
+        params.push(value === undefined ? null : value);
     }
 
     return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id), params: params, first: true };
