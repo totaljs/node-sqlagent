@@ -436,6 +436,26 @@ Debug mode writes each query to console.
 sql.debug = true;
 ```
 
+### Sets a default primary key
+
+```javascript
+Agent.primaryKey = 'id';
+sql.primaryKey = Agent.primaryKey; // is assigned automatically in new instance of SqlAgent
+```
+
+### We need to return into the callback only one value from the response object
+
+```javascript
+sql.exec(callback, 0); // --> returns first value from response (if isn't error)
+sql.exec(callback, 'users'); // --> returns response.users (if is isn't error)
+
+sql.exec(function(err, response) {
+    if (err)
+        throw err;
+    console.log(response); // response will contain only orders
+}, 'orders');
+```
+
 ## SqlBuilder
 
 - automatically adds `and` if is not added between e.g. 2x where
@@ -472,7 +492,14 @@ adds a value for update or insert
 ```plain
 builder.set(obj)
 ```
-adds a value for update or insert
+adds a object for update or insert value collection
+
+```javascript
+builder.set({ name: 'Peter', age: 30 });
+// is same as
+// builder.set('name', 'Peter');
+// builder.set('age', 30);
+```
 
 ---
 
@@ -496,6 +523,8 @@ builder.skip(value)
 ```
 skips records
 
+- `value` (Number or String), string is automatically converted into number
+
 ---
 
 #### builder.take()
@@ -506,6 +535,8 @@ builder.limit(value)
 ```
 takes records
 
+- `value` (Number or String), string is automatically converted into number
+
 ---
 
 #### builder.page()
@@ -514,6 +545,9 @@ takes records
 builder.page(page, maxItemsPerPage)
 ```
 sets automatically sql.skip() and sql.take()
+
+- `page` (Number or String), string is automatically converted into number
+- `maxItemsPerPage` (Number or String), string is automatically converted into number
 
 ---
 
@@ -621,11 +655,15 @@ adds like command
 #### builder.sql()
 
 ```plain
-builder.sql(query)
+builder.sql(query, [param1], [param2], [param..n])
 ```
 adds a custom SQL to SQL query
 
 - `query` (String)
+
+```javascript
+builder.sql('age=? AND name=?', 20, 'Peter');
+```
 
 ---
 

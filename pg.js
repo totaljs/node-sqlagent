@@ -66,7 +66,7 @@ SqlBuilder.prototype.order = function(name, desc) {
 
 SqlBuilder.prototype.skip = function(value) {
     var self = this;
-    self._skip = value;
+    self._skip = self.parseInt(value);
     return self;
 };
 
@@ -98,7 +98,7 @@ SqlBuilder.prototype.parseInt = function(num) {
 
 SqlBuilder.prototype.take = function(value) {
     var self = this;
-    self._take = value;
+    self._take = self.parseInt(value);
     return self;
 };
 
@@ -542,7 +542,7 @@ Agent.prototype._insert = function(item) {
         }
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || Agent.primaryKey), params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || self.primaryKey), params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -622,7 +622,7 @@ Agent.prototype.insert = function(name, table, values, id, without) {
         values = new SqlBuilder();
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id || Agent.primaryKey, values: values, without: without });
+    self.command.push({ type: 'insert', table: table, name: name, id: id || self.primaryKey, values: values, without: without });
     return is ? values : self;
 };
 
@@ -1041,6 +1041,10 @@ Agent.prototype._prepare = function(callback) {
 Agent.prototype.exec = function(callback, returnIndex) {
 
     var self = this;
+
+    // default primary key
+    if (!self.primaryKey)
+        self.primaryKey = Agent.primaryKey;
 
     if (Agent.debug) {
         self.debugname = 'sqlagent/pg (' + Math.floor(Math.random() * 1000) + ')';
