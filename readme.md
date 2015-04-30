@@ -2,8 +2,7 @@
 
 `npm install sqlagent`
 
-Then is needed to install a database driver:
-`npm install pg` or `npm install mysql`
+Then is needed to install a database driver: `npm install pg` or `npm install mysql`
 
 ---
 
