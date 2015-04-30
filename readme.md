@@ -421,6 +421,20 @@ sql.exec(function(err, response) {
 
 ## Bonus
 
+### How to get latest inserted ID?
+
+```javascript
+sql.insert('user', 'tbl_user').set('name', 'Peter');
+
+sql.bookmark(function() {
+    console.log(sql.id);
+    // or 
+    // console.log(sql.$$());
+});
+
+sql.exec();
+```
+
 ### Measuring time
 
 ```javascript
