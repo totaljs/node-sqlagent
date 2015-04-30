@@ -35,7 +35,9 @@ var sql = DATABASE();
 
 ### Select
 
-##### __instance.select([name], table, [columns])__:
+```plain
+instance.select([name], table, [columns])
+```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -71,7 +73,9 @@ sql.exec(function(err, response) {
 
 ### Insert
 
-##### __instance.insert([name], table, [value], [primaryId])__:
+```plain
+instance.insert([name], table, [value], [primaryId])
+```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -93,7 +97,9 @@ sql.exec(function(err, response) {
 
 ### Update
 
-##### __instance.update([name], table, [value])__:
+```plain
+instance.update([name], table, [value])
+```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -119,8 +125,10 @@ sql.exec(function(err, response) {
 
 ### Delete
 
-##### __instance.delete([name], table)__:
-##### __instance.remove([name], table)__:
+```plain
+instance.delete([name], table)
+instance.remove([name], table)
+```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
@@ -137,7 +145,9 @@ sql.exec(function(err, response) {
 
 ### Aggregation
 
-##### __instance.count([name], table)__:
+```plain
+instance.count([name], table)
+```
 
 - __returns__ SqlBuilder
 
@@ -150,9 +160,13 @@ sql.exec(function(err, response) {
 });
 ```
 
-##### __instance.max([name], table, column)__:
-##### __instance.min([name], table, column)__:
-##### __instance.avg([name], table, column)__:
+---
+
+```plain
+instance.max([name], table, column)
+instance.min([name], table, column)
+instance.avg([name], table, column)
+```
 
 - __returns__ SqlBuilder
 
@@ -167,7 +181,7 @@ sql.exec(function(err, response) {
 
 ### Transactions
 
-- rollback is executed automatically
+- rollback is performed automatically
 
 ```javascript
 sql.begin();
@@ -245,7 +259,9 @@ sql.exec();
 
 - you can use multiple `sql.validate()`
 
-##### sql.validate(fn)
+```plain
+sql.validate(fn)
+```
 
 ```javascript
 var select = sql.select('address', 'tbl_address');
@@ -276,7 +292,11 @@ user.set('name', 'Peter');
 sql.exec();
 ```
 
-##### sql.validate(error_message, [result_name_for_validation])
+---
+
+```plain
+sql.validate(error_message, [result_name_for_validation])
+```
 
 - `error_message` (String / Error) - error message
 - `result_name_for_validation` (String) a result to compare, optional and default: __latest result__
@@ -370,10 +390,11 @@ sql.validate('error-orders-empty');
 sql.validate('error-users-empty', 'users');
 ```
 
-
 ### Predefined queries
 
-##### Agent.query(name, query);
+```plain
+Agent.query(name, query);
+```
 
 ```javascript
 Agent.query('users', 'SELECT * FROM tbl_users');
@@ -404,76 +425,141 @@ sql.exec(function(err, response) {
 })
 ```
 
-##### __builder.set(name, value)__:
+---
+
+```plain
+builder.set(name, value)
+```
+
 adds a value for update or insert
 
 - `name` (String) a column name
 - `value` (Object) a value
 
-##### __builder.set(obj)__:
+---
+
+```plain
+builder.set(obj)
+```
 adds a value for update or insert
 
-##### __builder.sort(name, [desc])__:
-##### __builder.order(name, [desc])__:
+---
+
+```plain
+builder.sort(name, [desc])
+builder.order(name, [desc])
+```
 adds sorting
 
 - `name` (String) a column name
 - `desc` (Boolean), default: false
 
-##### __builder.skip(value)__:
+---
+
+```plain
+builder.skip(value)
+```
 skips records
 
-##### __builder.take(value)__:
-##### __builder.limit(value)__:
+---
+
+```plain
+builder.take(value)
+builder.limit(value)
+```
 takes records
 
-##### __builder.page(page, maxItemsPerPage)__:
+---
+
+```plain
+builder.page(page, maxItemsPerPage)
+```
 sets automatically sql.skip() and sql.take()
 
-##### __builder.first()__:
+---
+
+```plain
+builder.first()
+```
 sets sql.take(1)
 
-##### __builder.where(name, [operator], value)__:
-##### __builder.push(name, [operator], value)__:
+---
+
+```plain
+builder.where(name, [operator], value)
+builder.push(name, [operator], value)
+```
 sets a where condition.
 
 - `name` (String) a column name
 - `operator` (String), optional `>`, `<`, `<>`, `=` (default)
 - `value` (Object)
 
-##### __builder.group(names)__:
+---
+
+```plain
+builder.group(names)
+```
 creates a group by in SQL query
 
 - `name` (String or String Array)
 
-##### __builder.having(condition)__:
+---
+
+```plain
+builder.having(condition)
+```
 adds having in SQL query
 
 - `condition` (String), e.g. `MAX(Id)>0`
 
-##### __builder.and()__:
+---
+
+```plain
+builder.and()
+```
 adds AND to SQL query
 
-##### __builder.or()__:
+---
+
+```plain
+builder.or()
+```
 adds OR to SQL query
 
-##### __builder.in(name, value)__:
+---
+
+```plain
+builder.in(name, value)
+```
 adds IN to SQL query
 
 - `name` (String), a column name
 - `value` (String, Number or String Array, Number Array)
 
-##### __builder.between(name, a, b)__:
+---
+
+```plain
+builder.between(name, a, b)
+```
 adds between to SQL query
 
 - `name` (String), a column name
 - `a` (Number)
 - `b` (Number)
 
-##### __builder.sql(query)__:
+---
+
+```plain
+builder.sql(query)
+```
 adds a custom SQL to SQL query
 
 - `query` (String)
 
-##### __builder.toString()__:
+---
+
+```plain
+builder.toString()
+```
 creates escaped SQL query (internal)
