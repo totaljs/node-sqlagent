@@ -327,8 +327,8 @@ function Agent(options, error) {
     this.isPut = false;
     this.skipCount = 0;
     this.skips = {};
-    this.isErrorBuilder = global.ErrorBuilder ? true : false;
-    this.errors = error instanceof global.ErrorBuilder ? error : null;
+    this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
+    this.errors = this.isErrorBuilder ? error : null;
     this.time;
 }
 
@@ -1085,6 +1085,10 @@ Agent.prototype.$$exec = function(returnIndex) {
     return function(callback) {
         return self.exec(callback, returnIndex);
     }
+};
+
+Agent.destroy = function() {
+    throw new Error('Not supported.');
 };
 
 // Author: https://github.com/segmentio/pg-escape
