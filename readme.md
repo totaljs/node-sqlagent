@@ -1,3 +1,5 @@
+[![NPM version][npm-version-image]][npm-url] [![NPM downloads][npm-downloads-image]][npm-url] [![MIT License][license-image]][license-url] [![Build Status][
+
 # A very helpful ORM for node.js
 
 `npm install sqlagent`
@@ -721,3 +723,10 @@ builder.scope(function() {
 builder.toString()
 ```
 creates escaped SQL query (internal)
+
+[license-image]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
+[license-url]: license.txt
+
+[npm-url]: https://npmjs.org/package/sqlagent
+[npm-version-image]: https://img.shields.io/npm/v/sqlagent.svg?style=flat
+[npm-downloads-image]: https://img.shields.io/npm/dm/sqlagent.svg?style=flat
