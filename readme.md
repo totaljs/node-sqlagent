@@ -14,9 +14,19 @@ __IMPORTANT__:
 
 ### Basic initialization
 
+#### PostgreSQL
+
 ```javascript
 var Agent = require('sqlagent/pg');
 var sql = new Agent('connetion-string-to-postgresql');
+```
+
+#### MySQL
+
+```javascript
+var Agent = require('sqlagent/mysql');
+// var sql = new Agent('mysql://user:password@127.0.0.1/database');
+var sql = new Agent({ host: '...', database: '...' });
 ```
 
 ### Initialization for total.js
@@ -24,6 +34,7 @@ var sql = new Agent('connetion-string-to-postgresql');
 ```javascript
 // Below code rewrites total.js database prototype
 require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug is by default: false
+require('sqlagent/mysql').init('connetion-string-to-mysql', [debug]); // debug is by default: false
 
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
