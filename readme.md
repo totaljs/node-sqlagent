@@ -241,6 +241,8 @@ sql.exec();
 
 - you can use multiple `sql.validate()`
 
+##### sql.validate(fn)
+
 ```javascript
 var select = sql.select('address', 'tbl_address');
 select.where('isremoved', false);
@@ -258,6 +260,8 @@ sql.validate(function(error, response, resume) {
     }
     
     sql.builder('user').set('idaddress', response.id);
+
+    // continue
     resume();
 });
 
@@ -266,6 +270,118 @@ user.where('id', 20);
 user.set('name', 'Peter');
 
 sql.exec();
+```
+
+##### sql.validate(error_message, [result_name_for_validation])
+
+- `error_message` (String / Error) - error message
+- `result_name_for_validation` (String) a result to compare, optional and default: __latest result__
+
+If the function throw error then SqlAgent cancel all pending queris (perform Rollback if the agent is in transaction mode) and executes callback with error.
+
+```javascript
+var select = sql.select('address', 'tbl_address');
+select.where('isremoved', false);
+select.and();
+select.where('city', 'Bratislava');
+select.limit(1);
+
+// IMPORTANT:
+sql.validate('Sorry, address not found');
+
+var user = sql.select('user', 'tbl_user');
+user.where('id', 20);
+
+sql.validate('Sorry, user not found');
+sql.validate('Sorry, address not found for the current user', 'address');
+
+sql.exec();
+```
+
+## Global
+
+### Skipper
+
+```javascript
+sql.select('users', 'tbl_users');
+sql.skip(); // skip orders
+sql.select('orders', 'tbl_orders');
+
+sql.bookmark(function(error, response) {
+    // skip logs
+    sql.skip('logs');
+});
+
+sql.select('logs', 'tbl_logs');
+
+sql.exec(function(err, response) {
+    console.log(response); // --- response will be contain only { users: [] }
+});
+```
+
+### Bookmarks
+
+Bookmark is same as `sql.prepare()` function but without `resume` argument.
+
+```javascript
+sql.select('users', 'tbl_users');
+
+sql.bookmark(function(error, response) {
+    console.log(response);
+    response['custom'] = 'Peter';
+});
+
+sql.select('orders', 'tbl_orders');
+
+sql.exec(function(err, response) {
+    response.users;
+    response.orders;
+    response.custom; // === Peter
+});
+```
+
+### Error handling
+
+```javascript
+sql.select('users', 'tbl_users');
+
+sql.validate(function(error, response, resume) {
+
+    if (!response.users || respone.users.length === 0)
+        error.push(new Error('This is error'));
+
+    // total.js:
+    // error.push('error-users-empty');
+
+    resume();
+});
+
+sql.select('orders', 'tbl_orders');
+
+// sql.validate([error message], [result name for validation])
+sql.validate('error-orders-empty');
+// is same as:
+// sql.validate('error-orders-empty', 'orders');
+
+sql.validate('error-users-empty', 'users');
+```
+
+
+### Predefined queries
+
+##### Agent.query(name, query);
+
+```javascript
+Agent.query('users', 'SELECT * FROM tbl_users');
+Agent.query('allorders', 'SELECT * FROM view_orders');
+
+sql.query('users').where('id', '>', 20);
+sql.query('orders', 'allorders').limit(5);
+
+sql.exec(function(err, response) {
+    console.log(response[0]); // users
+    console.log(response.orders); // orders
+});
 ```
 
 ## SqlBuilder
@@ -357,12 +473,3 @@ adds a custom SQL to SQL query
 
 ##### __builder.toString()__:
 creates escaped SQL query (internal)
-
-
-
-
-
-
-
-
-

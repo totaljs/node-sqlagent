@@ -327,6 +327,12 @@ Agent.prototype.prepare = function(fn) {
     return self;
 };
 
+Agent.prototype.bookmark = function(fn) {
+    var self = this;
+    self.command.push({ type: 'bookmark', fn: fn });
+    return self;
+};
+
 Agent.prototype.put = function(value) {
     var self = this;
     self.command.push({ type: 'put', params: value, disable: value === undefined || value === null });
@@ -770,6 +776,11 @@ Agent.prototype._prepare = function(callback) {
                 next(false);
             });
             return;
+        }
+
+        if (item.type === 'bookmark') {
+            item.fn(self.errors, results);
+            return next();
         }
 
         if (item.type === 'prepare') {
