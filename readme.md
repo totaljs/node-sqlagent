@@ -1,14 +1,13 @@
-# Very helpful ORM for node.js
+# A very helpful ORM for node.js
 
 `npm install sqlagent`
 
-- Currently supports __PostgreSQL__ only
-- MySQL is in progress
+- Currently supports __PostgreSQL__ and __MySQL__
 - Simple and powerful
 
 __IMPORTANT__:
 
-- code is executed as it is added
+- code is executed as it's added
 - rollback is executed automatically when is transaction enable
 
 ## Initialization
