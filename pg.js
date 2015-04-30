@@ -798,12 +798,23 @@ Agent.prototype.close = function() {
     return self;
 };
 
+Agent.prototype.rollback = function(where, e, next) {
+    var self = this;
+    self.command.length = 0;
+    if (!self.isTransaction)
+        return next();
+    self.isRollback = true;
+    self.end();
+    next();
+};
+
 Agent.prototype._prepare = function(callback) {
 
     var results = {};
     var self = this;
-    var rollback = false;
-    var isTransaction = false;
+
+    self.isRollback = false;
+    self.isTransaction = false;
 
     if (!self.errors)
         self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
@@ -811,36 +822,48 @@ Agent.prototype._prepare = function(callback) {
     self.command.sqlagent(function(item, next) {
 
         if (item.type === 'validate') {
-            item.fn(self.errors, results, function(output) {
-                if (output === true || output === undefined)
-                    return next();
-                // reason
-                if (typeof(output) === 'string')
-                    self.errors.push(output);
-                else if (item.error)
-                    self.errors.push(item.error);
+            try {
+                item.fn(self.errors, results, function(output) {
+                    if (output === true || output === undefined)
+                        return next();
+                    // reason
+                    if (typeof(output) === 'string')
+                        self.errors.push(output);
+                    else if (item.error)
+                        self.errors.push(item.error);
 
-                // we have error
-                if (isTransaction) {
-                    self.command.length = 0;
-                    rollback = true;
-                    self.end();
-                    next();
-                } else
-                    next(false);
-            });
+                    // we have error
+                    if (self.isTransaction) {
+                        self.command.length = 0;
+                        self.isRollback = true;
+                        self.end();
+                        next();
+                    } else
+                        next(false);
+                });
+            } catch (e) {
+                self.rollback('validate', e, next);
+            }
             return;
         }
 
         if (item.type === 'bookmark') {
-            item.fn(self.errors, results);
-            return next();
+            try {
+                item.fn(self.errors, results);
+                return next();
+            } catch (e) {
+                self.rollback('bookmark', e, next);
+            }
         }
 
         if (item.type === 'prepare') {
-            item.fn(self.errors, results, function() {
-                next();
-            });
+            try {
+                item.fn(self.errors, results, function() {
+                    next();
+                });
+            } catch (e) {
+                self.rollback('prepare', e, next);
+            }
             return;
         }
 
@@ -902,8 +925,8 @@ Agent.prototype._prepare = function(callback) {
         var query = function(err, result) {
             if (err) {
                 self.errors.push(err.message);
-                if (isTransaction)
-                    rollback = true;
+                if (self.isTransaction)
+                    self.isRollback = true;
             } else {
                 var rows = result.rows;
                 if (self.isPut === false && current.type === 'insert')
@@ -917,7 +940,6 @@ Agent.prototype._prepare = function(callback) {
                     results[current.name] = rows instanceof Array ? rows[0] : rows;
                 else
                     results[current.name] = rows;
-
                 self.emit('data', current.name, results);
             }
             self.last = item.name;
@@ -944,20 +966,20 @@ Agent.prototype._prepare = function(callback) {
             self.db.query('BEGIN', function(err) {
                 if (err) {
                     self.errors.push(err.message);
-                    self.command = [];
-                    next();
+                    self.command.length = 0;
+                    next(false);
                     return;
                 }
-                isTransaction = true;
-                rollback = false;
+                self.isTransaction = true;
+                self.isRollback = false;
                 next();
             });
             return;
         }
 
         if (item.type === 'end') {
-            isTransaction = false;
-            if (rollback) {
+            self.isTransaction = false;
+            if (self.isRollback) {
 
                 if (Agent.debug)
                     console.log(self.debugname, 'rollback transaction');
@@ -965,9 +987,9 @@ Agent.prototype._prepare = function(callback) {
                 self.db.query('ROLLBACK', function(err) {
                     if (!err)
                         return next();
-                    self.command = [];
+                    self.command.length = 0;
                     self.push(err.message);
-                    next();
+                    next(false);
                 });
                 return;
             }
@@ -979,7 +1001,7 @@ Agent.prototype._prepare = function(callback) {
                 if (!err)
                     return next();
                 self.errors.push(err.message);
-                self.command = [];
+                self.command.length = 0;
                 self.db.query('ROLLBACK', function(err) {
                     if (!err)
                         return next();
