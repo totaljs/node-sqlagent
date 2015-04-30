@@ -85,7 +85,7 @@ sql.exec(function(err, response) {
 ### Insert
 
 ```plain
-instance.insert([name], table, [value], [primaryId])
+instance.insert([name], table, [value])
 ```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
