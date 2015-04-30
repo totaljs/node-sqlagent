@@ -825,9 +825,9 @@ Agent.prototype._prepare = function(callback) {
                     self.command.length = 0;
                     rollback = true;
                     self.end();
-                }
-
-                next(false);
+                    next();
+                } else
+                    next(false);
             });
             return;
         }
