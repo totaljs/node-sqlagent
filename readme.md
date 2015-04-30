@@ -4,6 +4,7 @@
 
 - Currently supports __PostgreSQL__ and __MySQL__
 - Simple and powerful
+- Best use with [total.js - web application framework for node.js](https://www.totaljs.com)
 
 __IMPORTANT__:
 
