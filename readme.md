@@ -427,6 +427,8 @@ sql.exec(function(err, response) {
 
 ---
 
+### builder.set()
+
 ```plain
 builder.set(name, value)
 ```
@@ -445,6 +447,8 @@ adds a value for update or insert
 
 ---
 
+### builder.sort()
+
 ```plain
 builder.sort(name, [desc])
 builder.order(name, [desc])
@@ -456,12 +460,16 @@ adds sorting
 
 ---
 
+### builder.skip()
+
 ```plain
 builder.skip(value)
 ```
 skips records
 
 ---
+
+### builder.take()
 
 ```plain
 builder.take(value)
@@ -471,12 +479,16 @@ takes records
 
 ---
 
+### builder.page()
+
 ```plain
 builder.page(page, maxItemsPerPage)
 ```
 sets automatically sql.skip() and sql.take()
 
 ---
+
+### builder.first()
 
 ```plain
 builder.first()
@@ -485,17 +497,21 @@ sets sql.take(1)
 
 ---
 
+### builder.where()
+
 ```plain
 builder.where(name, [operator], value)
 builder.push(name, [operator], value)
 ```
-sets a where condition.
+add a condition after SQL WHERE
 
 - `name` (String) a column name
 - `operator` (String), optional `>`, `<`, `<>`, `=` (default)
 - `value` (Object)
 
 ---
+
+### builder.group()
 
 ```plain
 builder.group(names)
@@ -506,6 +522,8 @@ creates a group by in SQL query
 
 ---
 
+### builder.having()
+
 ```plain
 builder.having(condition)
 ```
@@ -515,6 +533,8 @@ adds having in SQL query
 
 ---
 
+### builder.and()
+
 ```plain
 builder.and()
 ```
@@ -522,12 +542,16 @@ adds AND to SQL query
 
 ---
 
+### builder.or()
+
 ```plain
 builder.or()
 ```
 adds OR to SQL query
 
 ---
+
+### builder.in()
 
 ```plain
 builder.in(name, value)
@@ -538,6 +562,8 @@ adds IN to SQL query
 - `value` (String, Number or String Array, Number Array)
 
 ---
+
+### builder.between()
 
 ```plain
 builder.between(name, a, b)
@@ -550,6 +576,8 @@ adds between to SQL query
 
 ---
 
+### builder.sql()
+
 ```plain
 builder.sql(query)
 ```
@@ -558,6 +586,8 @@ adds a custom SQL to SQL query
 - `query` (String)
 
 ---
+
+### builder.toString()
 
 ```plain
 builder.toString()
