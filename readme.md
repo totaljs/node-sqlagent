@@ -47,6 +47,10 @@ var users = sql.select('users', 'tbl_user', '*');
 users.where('id', '>', 5);
 users.page(10, 10);
 
+var orders = sql.select('orders', 'tbl_order', 'id, name, created');
+orders.where('isremoved', false);
+orders.page(10, 10);
+
 var products = sql.select('products', 'tbl_products', ['id', 'name']);
 products.between('price', 30, 50);
 products.and();
