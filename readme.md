@@ -160,6 +160,26 @@ sql.exec(function(err, response) {
 });
 ```
 
+### Query
+
+```plain
+instance.query([name], query, [params])
+```
+
+- `name` (String) is an identificator for results, optional (default: internal indexer)
+- `query` (String) SQL query
+- `params` (Object Array) optional
+- __returns__ if params is undefined then __SqlBuilder__ otherwise __SqlAgent__
+
+```javascript
+var query = sql.query('user', 'SELECT * FROM tbl_user');
+query.where('id', 1);
+
+sql.exec(function(err, response) {
+    console.log(response.user);
+});
+```
+
 ### Aggregation
 
 ```plain
