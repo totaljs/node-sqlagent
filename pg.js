@@ -271,6 +271,10 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
     return self;
 };
 
+SqlBuilder.prototype.query = function(sql) {
+    return this.sql(sql);
+};
+
 SqlBuilder.prototype.sql = function(sql) {
     var self = this;
     self.checkOperator();
@@ -542,7 +546,8 @@ Agent.prototype._insert = function(item) {
         }
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + (item.id || self.primaryKey), params: params, first: true };
+    var id = (item.id || self.primaryKey);
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + id, id: id, params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -622,7 +627,7 @@ Agent.prototype.insert = function(name, table, values, id, without) {
         values = new SqlBuilder();
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id || self.primaryKey, values: values, without: without });
+    self.command.push({ type: 'insert', table: table, name: name, id: id, values: values, without: without });
     return is ? values : self;
 };
 
@@ -929,14 +934,14 @@ Agent.prototype._prepare = function(callback) {
                     self.isRollback = true;
             } else {
                 var rows = result.rows;
+
                 if (self.isPut === false && current.type === 'insert')
-                    self.id = rows[0][item.id];
+                    self.id = rows[0][current.id];
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
                         results[current.name] = rows[0][current.column];
-                }
-                else if (current.first)
+                } else if (current.first)
                     results[current.name] = rows instanceof Array ? rows[0] : rows;
                 else
                     results[current.name] = rows;
