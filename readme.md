@@ -4,11 +4,11 @@
 
 `npm install sqlagent`
 
-Then is needed to install a database driver: `npm install pg` or `npm install mysql`
+Then is needed to install a database driver: `npm install pg` or `npm install mysql` or `npm install mssql`
 
 ---
 
-- Currently supports __PostgreSQL__ and __MySQL__
+- Currently supports __PostgreSQL__, __MySQL__ and __SQL Server__
 - Simple and powerful
 - Best use with [total.js - web application framework for node.js](https://www.totaljs.com)
 
