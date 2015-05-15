@@ -671,15 +671,19 @@ Agent.prototype.builder = function(name) {
     }
 };
 
-Agent.prototype.count = function(name, table) {
+Agent.prototype.count = function(name, table, column) {
     var self = this;
+
     if (typeof(table) !== 'string') {
         table = name;
         name = self.index++;
     }
 
+    if (!column)
+        column = '*';
+
     var condition = new SqlBuilder();
-    self.command.push({ type: 'query', query: 'SELECT COUNT(*) as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
     return condition;
 };
 
@@ -1157,7 +1161,7 @@ function isFIRST(query) {
 
 Agent.init = function(conn, debug) {
     Agent.debug = debug ? true : false;
-    var id = JSON.stringify(conn).hash();
+    var id = typeof(conn) === 'string' ? conn.hash() : JSON.stringify(conn).hash();
     framework.database = function(errorBuilder) {
         return new Agent(conn, errorBuilder, id);
     };
