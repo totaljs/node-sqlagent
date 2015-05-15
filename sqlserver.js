@@ -181,19 +181,19 @@ SqlBuilder.escape = function(value) {
         return value.toString();
 
     if (type === 'string')
-        return SqlBuilder.escape(value);
+        return SqlBuilder.escaper(value);
 
     if (value instanceof Array)
-        return SqlBuilder.escape(value.join(','));
+        return SqlBuilder.escaper(value.join(','));
 
     if (value instanceof Date)
         return dateToString(value);
 
-    return SqlBuilder.escape(value.toString());
+    return SqlBuilder.escaper(value.toString());
 };
 
-SqlBuilder.escape = function(value) {
-    return value.replace(/\'/g, '\'\'');
+SqlBuilder.escaper = function(value) {
+    return "'" + value.replace(/\'/g, '\'\'') + "'";
 };
 
 SqlBuilder.column = function(name) {
@@ -353,6 +353,7 @@ function Agent(options, error, id) {
     this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
     this.errors = this.isErrorBuilder ? error : null;
     this.time;
+    this.$transaction;
 }
 
 Agent.prototype = {
@@ -557,10 +558,15 @@ Agent.prototype._insert = function(item) {
         if (type === 'string')
             value = value.trim();
 
+        if (type === 'object') {
+            if (typeof(value.getTime) === 'function')
+                type = 'date';
+        }
+
         params.push({ name: key, type: type, value: value === undefined ? null : value });
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + '); SELECT @@identity AS ' + item.id, params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + '); SELECT @@identity AS ' + (item.id || self.primaryKey), params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -604,7 +610,7 @@ Agent.prototype._update = function(item) {
 };
 
 Agent.prototype._select = function(item) {
-    return { name: item.name, query: item.condition.preapre(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1 };
+    return { name: item.name, query: item.condition.prepare(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1 };
 };
 
 Agent.prototype._delete = function(item) {
@@ -970,7 +976,7 @@ Agent.prototype._prepare = function(callback) {
                 console.log(self.debugname, current.name, current.query);
 
             self.emit('query', current.name, current.query, current.params);
-            var request = new self.db.Request();
+            var request = new database.Request(self.$transaction ? self.$transaction : self.db);
             prepare_params_request(request, current.params);
             request.query(current.query, query);
             return;
@@ -981,7 +987,8 @@ Agent.prototype._prepare = function(callback) {
             if (Agent.debug)
                 console.log(self.debugname, 'begin transaction');
 
-            self.db.query('BEGIN', function(err) {
+            self.$transaction = new database.Transaction(self.db);
+            self.$transaction.begin(function(err) {
                 if (err) {
                     self.errors.push(err.message);
                     self.command.length = 0;
@@ -1002,11 +1009,13 @@ Agent.prototype._prepare = function(callback) {
                 if (Agent.debug)
                     console.log(self.debugname, 'rollback transaction');
 
-                self.db.query('ROLLBACK', function(err) {
+                self.$transaction.rollback(function(err) {
+                    self.$transaction = null;
                     if (!err)
                         return next();
                     self.command.length = 0;
                     self.push(err.message);
+                    self.$transaction = null;
                     next(false);
                 });
                 return;
@@ -1015,12 +1024,17 @@ Agent.prototype._prepare = function(callback) {
             if (Agent.debug)
                 console.log(self.debugname, 'commit transaction');
 
-            self.db.query('COMMIT', function(err) {
-                if (!err)
+            self.$transaction.commit(function(err) {
+
+                if (!err) {
+                    self.$transaction = null;
                     return next();
+                }
+
                 self.errors.push(err.message);
                 self.command.length = 0;
-                self.db.query('ROLLBACK', function(err) {
+                self.$transaction.rollback(function(err) {
+                    self.$transaction = null;
                     if (!err)
                         return next();
                     self.errors.push(err.message);
@@ -1107,12 +1121,11 @@ Agent.prototype.exec = function(callback, returnIndex) {
         }
     }
 
-    self.db = new sql.Connection(self.options, function(err) {
+    self.db = new database.Connection(self.options, function(err) {
         if (err) {
             callback.call(self, err, null);
             return;
         }
-
         self._prepare(callback);
     });
 
@@ -1148,17 +1161,24 @@ function dateToString(dt) {
 }
 
 function prepare_params_request(request, params) {
+    if (!params)
+        return;
     for (var i = 0, length = params.length; i < length; i++) {
         var param = params[i];
-        switch (typeof(param)) {
+        switch (param.type) {
             case 'number':
+                request.input(param.name, param.value % 1 === 0 ? database.Int : database.Decimal, param.value);
                 break;
             case 'string':
-                request.input('')
+                request.input(param.name, database.NVarChar, param.value);
                 break;
             case 'object':
                 break;
             case 'boolean':
+                request.input(param.name, database.Bit, param.value);
+                break;
+            case 'date':
+                request.input(param.name, database.DateTime, param.value);
                 break;
         }
     }

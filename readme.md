@@ -42,6 +42,7 @@ var sql = new Agent({ host: '...', database: '...' });
 // Below code rewrites total.js database prototype
 require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug is by default: false
 require('sqlagent/mysql').init('connetion-string-to-mysql', [debug]); // debug is by default: false
+require('sqlagent/sqlserver').init('connetion-string-to-mysql', [debug]); // debug is by default: false
 
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
