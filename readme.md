@@ -16,6 +16,7 @@ __IMPORTANT__:
 
 - code is executed as it's added
 - rollback is executed automatically when is transaction enable
+- SQL Server: pagination works only in SQL SERVER >=2012
 
 ## Initialization
 
