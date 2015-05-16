@@ -13,6 +13,7 @@ function SqlBuilder(skip, take) {
     this._skip = skip >= 0 ? skip : 0;
     this._take = take >= 0 ? take : 0;
     this._set = null;
+    this._define;
     this.hasOperator = false;
 }
 
@@ -26,6 +27,14 @@ SqlBuilder.prototype.prepare = function(query) {
     if (this._skip === 0 && this._take > 0)
         return query.replace(/select/i, 'SELECT TOP ' + this._take);
     return query;
+};
+
+SqlBuilder.prototype.define = function(name, type) {
+    var self = this;
+    if (!self._define)
+        self._define = {};
+    self._define[name] = type;
+    return self;
 };
 
 SqlBuilder.prototype.set = function(name, value) {
@@ -354,6 +363,7 @@ function Agent(options, error, id) {
     this.errors = this.isErrorBuilder ? error : null;
     this.time;
     this.$transaction;
+    this.$fast = false;
 }
 
 Agent.prototype = {
@@ -375,15 +385,20 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
-// Default primary key
-Agent.primaryKey = 'id';
-
 // Debug mode (output to console)
 Agent.debug = false;
 
 Agent.query = function(name, query) {
     queries[name] = query;
     return Agent;
+};
+
+Agent.prototype.nolock = function(enable) {
+    if (enable === undefined)
+        this.$fast = true;
+    else
+        this.$fast = false;
+    return this;
 };
 
 Agent.prototype.skip = function(name) {
@@ -526,9 +541,12 @@ Agent.prototype._insert = function(item) {
     var name = item.name;
     var values = item.values;
     var table = item.table;
+    var isPrepare = false;
 
-    if (values instanceof SqlBuilder)
+    if (values instanceof SqlBuilder) {
+        isPrepare = values._define ? true : false;
         values = values._set;
+    }
 
     var keys = Object.keys(values);
 
@@ -551,6 +569,7 @@ Agent.prototype._insert = function(item) {
         columns_values.push('@' + key);
 
         var type = typeof(value);
+        var isFN = false;
 
         if (type === 'function')
             value = value();
@@ -558,15 +577,25 @@ Agent.prototype._insert = function(item) {
         if (type === 'string')
             value = value.trim();
 
+        if (type === 'function')
+            isFN = true;
+
         if (type === 'object') {
-            if (typeof(value.getTime) === 'function')
-                type = 'date';
+            if (Buffer.isBuffer(value))
+                type = 'varbinary';
+            else if (typeof(value.getTime) === 'function')
+                type = 'datetime';
         }
 
-        params.push({ name: key, type: type, value: value === undefined ? null : value });
+        if (isPrepare) {
+            if (item.values._define[key])
+                type = item.values._define[key];
+        }
+
+        params.push({ name: key, type: type, value: value === undefined ? null : value, isFN: isFN });
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + '); SELECT @@identity AS ' + (item.id || self.primaryKey), params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + '); SELECT @@identity AS insertId', params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -606,7 +635,7 @@ Agent.prototype._update = function(item) {
         params.push({ name: key, type: type, value: value === undefined ? null : value });
     }
 
-    return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id), params: params, first: true };
+    return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id) + '; SELECT @@rowcount As affectedRows', params: params, first: true };
 };
 
 Agent.prototype._select = function(item) {
@@ -614,24 +643,18 @@ Agent.prototype._select = function(item) {
 };
 
 Agent.prototype._delete = function(item) {
-    return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: true };
+    return { name: item.name, query: item.query + item.condition.toString(this.id) + '; SELECT @@rowcount As affectedRows', params: null, first: true };
 };
 
-Agent.prototype.insert = function(name, table, values, id, without) {
+Agent.prototype.insert = function(name, table, values, without) {
 
     var self = this;
 
     if (typeof(table) !== 'string') {
-        without = id;
-        id = values;
+        without = values;
         values = table;
         table = name;
         name = self.index++;
-    }
-
-    if (id instanceof Array) {
-        without = id;
-        id = undefined;
     }
 
     var is = false;
@@ -640,7 +663,7 @@ Agent.prototype.insert = function(name, table, values, id, without) {
         values = new SqlBuilder();
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id || self.primaryKey, values: values, without: without });
+    self.command.push({ type: 'insert', table: table, name: name, values: values, without: without });
     return is ? values : self;
 };
 
@@ -677,7 +700,7 @@ Agent.prototype.select = function(name, table, schema, without, skip, take) {
         }
     }
 
-    self.command.push({ type: 'select', query: 'SELECT ' + columns.join(',') + ' FROM ' + table, name: name, without: without, condition: condition });
+    self.command.push({ type: 'select', query: 'SELECT ' + columns.join(',') + ' FROM ' + table + (self.$fast ? ' WITH (NOLOCK)' : ''), name: name, without: without, condition: condition });
     return condition;
 };
 
@@ -778,7 +801,7 @@ Agent.prototype.update = function(name, table, values, without) {
     if (!values)
         values = condition;
 
-    self.command.push({ type: 'update', table: table, name: name, values: values, without: without, condition: condition });
+    self.command.push({ type: 'update', table: table + (self.$fast ? ' WITH (ROWLOCK)' : ''), name: name, values: values, without: without, condition: condition });
     return condition;
 };
 
@@ -792,7 +815,7 @@ Agent.prototype.delete = function(name, table) {
     }
 
     var condition = new SqlBuilder();
-    self.command.push({ type: 'delete', query: 'DELETE FROM ' + table, name: name, condition: condition });
+    self.command.push({ type: 'delete', query: 'DELETE FROM ' + table + (self.$fast ? ' WITH (ROWLOCK)' : ''), name: name, condition: condition });
     return condition;
 };
 
@@ -941,8 +964,7 @@ Agent.prototype._prepare = function(callback) {
         if (current.params instanceof SqlBuilder) {
             current.query = current.params.prepare(current.query) + current.params.toString(self.id);
             current.params = undefined;
-        } else
-            current.params = prepare_params(current.params);
+        }
 
         var query = function(err, rows) {
             if (err) {
@@ -952,7 +974,7 @@ Agent.prototype._prepare = function(callback) {
             } else {
 
                 if (self.isPut === false && current.type === 'insert')
-                    self.id = rows.length > 0 ? rows[0][item.id] : null;
+                    self.id = rows.length > 0 ? rows[0].insertId : null;
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
@@ -977,7 +999,8 @@ Agent.prototype._prepare = function(callback) {
 
             self.emit('query', current.name, current.query, current.params);
             var request = new database.Request(self.$transaction ? self.$transaction : self.db);
-            prepare_params_request(request, current.params);
+            if (current.params)
+                prepare_params_request(request, current.params);
             request.query(current.query, query);
             return;
         }
@@ -1074,10 +1097,6 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
     var self = this;
 
-    // default primary key
-    if (!self.primaryKey)
-        self.primaryKey = Agent.primaryKey;
-
     if (Agent.debug) {
         self.debugname = 'sqlagent/sqlserver (' + Math.floor(Math.random() * 1000) + ')';
         self.debugtime = Date.now();
@@ -1161,44 +1180,84 @@ function dateToString(dt) {
 }
 
 function prepare_params_request(request, params) {
+
     if (!params)
         return;
+
     for (var i = 0, length = params.length; i < length; i++) {
         var param = params[i];
-        switch (param.type) {
+        var type = param.type.toLowerCase();
+        var value = param.value;
+
+        if (param.isFN) {
+            value = value(params);
+            type = typeof(value);
+        }
+
+        switch (type) {
             case 'number':
-                request.input(param.name, param.value % 1 === 0 ? database.Int : database.Decimal, param.value);
+                request.input(param.name, value % 1 === 0 ? database.Int : database.Decimal, value);
+                break;
+            case 'decimal':
+                request.input(param.name, database.Decimal, value);
+                break;
+            case 'uniqueidentifier':
+            case 'guid':
+                request.input(param.name, database.UniqueIdentifier, value);
+                break;
+            case 'money':
+                request.input(param.name, database.Money, value);
+                break;
+            case 'float':
+                request.input(param.name, database.Float, value);
+                break;
+            case 'bigint':
+                request.input(param.name, database.BigInt, value);
+                break;
+            case 'smallint':
+            case 'byte':
+                request.input(param.name, database.SmallInt, value);
                 break;
             case 'string':
-                request.input(param.name, database.NVarChar, param.value);
-                break;
-            case 'object':
+            case 'nvarchar':
+                request.input(param.name, database.NVarChar, value);
                 break;
             case 'boolean':
-                request.input(param.name, database.Bit, param.value);
+            case 'bit':
+                request.input(param.name, database.Bit, value);
                 break;
-            case 'date':
-                request.input(param.name, database.DateTime, param.value);
+            case 'datetime':
+                request.input(param.name, database.DateTime, value);
+                break;
+            case 'smalldatetime':
+                request.input(param.name, database.SmallDateTime, value);
+                break;
+            case 'binary':
+                request.input(param.name, database.Binary, value);
+                break;
+            case 'image':
+                request.input(param.name, database.Image, value);
+                break;
+            case 'varbinary':
+                request.input(param.name, database.VarBinary, value);
+                break;
+            case 'varchar':
+                request.input(param.name, database.VarChar, value);
+                break;
+            case 'text':
+                request.input(param.name, database.Text, value);
+                break;
+            case 'ntext':
+                request.input(param.name, database.NText, value);
                 break;
         }
     }
 }
 
-function prepare_params(params) {
-    if (!params)
-        return params;
-    for (var i = 0, length = params.length; i < length; i++) {
-        var param = params[i];
-        if (typeof(param) === 'function')
-            params[i] = param(params);
-    }
-    return params;
-}
-
 function isFIRST(query) {
     if (!query)
         return false;
-    return query.substring(query.length - 7).toLowerCase() === 'limit 1';
+    return query.substring(0, 13).toLowerCase() === 'select top 1';
 }
 
 Agent.init = function(conn, debug) {

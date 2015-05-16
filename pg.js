@@ -355,9 +355,6 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
-// Default primary key
-Agent.primaryKey = 'id';
-
 // Debug mode (output to console)
 Agent.debug = false;
 
@@ -546,8 +543,7 @@ Agent.prototype._insert = function(item) {
         }
     }
 
-    var id = (item.id || self.primaryKey);
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + id, id: id, params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING insertId', params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -604,21 +600,15 @@ Agent.prototype._delete = function(item) {
     return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: true };
 };
 
-Agent.prototype.insert = function(name, table, values, id, without) {
+Agent.prototype.insert = function(name, table, values, without) {
 
     var self = this;
 
     if (typeof(table) !== 'string') {
-        without = id;
-        id = values;
+        without = values;
         values = table;
         table = name;
         name = self.index++;
-    }
-
-    if (id instanceof Array) {
-        without = id;
-        id = undefined;
     }
 
     var is = false;
@@ -627,7 +617,7 @@ Agent.prototype.insert = function(name, table, values, id, without) {
         values = new SqlBuilder();
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id, values: values, without: without });
+    self.command.push({ type: 'insert', table: table, name: name, values: values, without: without });
     return is ? values : self;
 };
 
@@ -940,7 +930,7 @@ Agent.prototype._prepare = function(callback) {
                 var rows = result.rows;
 
                 if (self.isPut === false && current.type === 'insert')
-                    self.id = rows[0][current.id];
+                    self.id = rows[0].insertId;
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
@@ -1050,10 +1040,6 @@ Agent.prototype._prepare = function(callback) {
 Agent.prototype.exec = function(callback, returnIndex) {
 
     var self = this;
-
-    // default primary key
-    if (!self.primaryKey)
-        self.primaryKey = Agent.primaryKey;
 
     if (Agent.debug) {
         self.debugname = 'sqlagent/pg (' + Math.floor(Math.random() * 1000) + ')';

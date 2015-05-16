@@ -361,9 +361,6 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
     }
 });
 
-// Default primary key
-Agent.primaryKey = 'id';
-
 // Debug mode (output to console)
 Agent.debug = false;
 
@@ -598,21 +595,15 @@ Agent.prototype._delete = function(item) {
     return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: true };
 };
 
-Agent.prototype.insert = function(name, table, values, id, without) {
+Agent.prototype.insert = function(name, table, values, without) {
 
     var self = this;
 
     if (typeof(table) !== 'string') {
-        without = id;
-        id = values;
+        without = values;
         values = table;
         table = name;
         name = self.index++;
-    }
-
-    if (id instanceof Array) {
-        without = id;
-        id = undefined;
     }
 
     var is = false;
@@ -621,7 +612,7 @@ Agent.prototype.insert = function(name, table, values, id, without) {
         values = new SqlBuilder();
     }
 
-    self.command.push({ type: 'insert', table: table, name: name, id: id || self.primaryKey, values: values, without: without });
+    self.command.push({ type: 'insert', table: table, name: name, values: values, without: without });
     return is ? values : self;
 };
 
@@ -1043,10 +1034,6 @@ Agent.prototype._prepare = function(callback) {
 Agent.prototype.exec = function(callback, returnIndex) {
 
     var self = this;
-
-    // default primary key
-    if (!self.primaryKey)
-        self.primaryKey = Agent.primaryKey;
 
     if (Agent.debug) {
         self.debugname = 'sqlagent/mysql (' + Math.floor(Math.random() * 1000) + ')';

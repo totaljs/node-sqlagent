@@ -36,6 +36,13 @@ var Agent = require('sqlagent/mysql');
 var sql = new Agent({ host: '...', database: '...' });
 ```
 
+#### SQL Server (MSSQL)
+
+```javascript
+var Agent = require('sqlagent/sqlserver');
+var sql = new Agent('connetion-string-to-sqlserver');
+```
+
 ### Initialization for total.js
 
 ```javascript
@@ -108,8 +115,8 @@ insert.set('message', 'Some log message.');
 insert.set('created', new Date());
 
 sql.exec(function(err, response) {
-    console.log(response.user);
-    console.log(response.log);
+    console.log(response.user); // response.user.insertId (INSERTED IDENTITY)
+    console.log(response.log); // response.log.insertId (INSERTED IDENTITY)
 });
 ```
 
@@ -487,13 +494,6 @@ Debug mode writes each query to console.
 
 ```javascript
 sql.debug = true;
-```
-
-### Sets a default primary key
-
-```javascript
-Agent.primaryKey = 'id';
-sql.primaryKey = Agent.primaryKey; // is assigned automatically in new instance of SqlAgent
 ```
 
 ### We need to return into the callback only one value from the response object
