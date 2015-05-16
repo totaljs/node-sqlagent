@@ -40,7 +40,8 @@ var sql = new Agent({ host: '...', database: '...' });
 
 ```javascript
 var Agent = require('sqlagent/sqlserver');
-var sql = new Agent('connetion-string-to-sqlserver');
+// var sql = new Agent('mssql://user:password@127.0.0.1/database');
+var sql = new Agent({ server: '...', database: '...' });
 ```
 
 ### Initialization for total.js
