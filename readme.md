@@ -743,7 +743,7 @@ builder.scope(function() {
 #### builder.define()
 
 ```plain
-builder.scope(name, type);
+builder.define(name, SQL_TYPE_LOWERCASE);
 ```
 - only for SQL SERVER
 - change the param type
