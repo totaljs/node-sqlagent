@@ -739,6 +739,24 @@ builder.scope(function() {
 // creates: user='person' AND (type=20 OR age<20)
 ```
 
+#### builder.define()
+
+```plain
+builder.scope(name, type);
+```
+- only for SQL SERVER
+- change the param type
+
+```javascript
+var insert = sql.insert('user', 'tbl_user');
+
+insert.set('name', 'Peter Širka');
+insert.define('name', 'varchar');
+insert.set('credit', 340.34);
+insert.define('credit', 'money');
+sql.exec();
+```
+
 #### builder.toString()
 
 ```plain
