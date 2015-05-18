@@ -335,6 +335,7 @@ function Agent(options, error) {
     this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
     this.errors = this.isErrorBuilder ? error : null;
     this.time;
+    this.$primary = 'id';
 }
 
 Agent.prototype = {
@@ -374,6 +375,14 @@ Agent.prototype.skip = function(name) {
     }
 
     self.skips[name] = true;
+    return self;
+};
+
+Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
+    var self = this;
+    if (!name)
+        name = 'id';
+    self.command.push({ type: 'primary', name: name });
     return self;
 };
 
@@ -544,7 +553,7 @@ Agent.prototype._insert = function(item) {
         }
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING insertId', params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + self.$primary + ' as insertId', params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -854,6 +863,12 @@ Agent.prototype._prepare = function(callback) {
             } catch (e) {
                 self.rollback('bookmark', e, next);
             }
+        }
+
+        if (item.type === 'primary') {
+            self.$primary = item.name;
+            next();
+            return;
         }
 
         if (item.type === 'prepare') {

@@ -383,6 +383,11 @@ Agent.prototype.skip = function(name) {
     return self;
 };
 
+Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
+    // compatibility with PG
+    return this;
+};
+
 Agent.prototype.prepare = function(fn) {
     var self = this;
     self.command.push({ type: 'prepare', fn: fn });

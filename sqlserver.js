@@ -402,6 +402,11 @@ Agent.prototype.nolock = function(enable) {
     return this;
 };
 
+Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
+    // compatibility with PG
+    return this;
+};
+
 Agent.prototype.skip = function(name) {
 
     var self = this;

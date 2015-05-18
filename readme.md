@@ -238,6 +238,23 @@ sql.commit();
 
 ## Special cases
 
+### How to set the primary key?
+
+```javascript
+// instance.primary('column name') is same as instance.primaryKey('column name')
+
+instance.primary('userid');
+instance.insert('tbl_user', ...);
+
+instance.primary('productid');
+instance.insert('tbl_product', ...);
+
+instance.primary(); // back to default "id"
+```
+
+- default `primary key name` is `id`
+- works only in PostgreSQL because INSERT ... RETURNING __must have specific column name__
+
 ### How to use latest primary id value for relations?
 
 ```javascript
