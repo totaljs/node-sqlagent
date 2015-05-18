@@ -601,7 +601,7 @@ Agent.prototype._insert = function(item) {
         params.push({ name: key, type: type, value: value === undefined ? null : value, isFN: isFN });
     }
 
-    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + '); SELECT @@identity AS insertId', params: params, first: true };
+    return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + '); SELECT @@identity AS [identity]', params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -980,7 +980,7 @@ Agent.prototype._prepare = function(callback) {
             } else {
 
                 if (current.type === 'insert') {
-                    self.id = rows.length > 0 ? rows[0].insertId : null;
+                    self.id = rows.length > 0 ? rows[0].identity : null;
                     if (self.isPut === false)
                         self.$id = self.id;
                 }

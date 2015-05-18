@@ -117,8 +117,8 @@ insert.set('message', 'Some log message.');
 insert.set('created', new Date());
 
 sql.exec(function(err, response) {
-    console.log(response.user); // response.user.insertId (INSERTED IDENTITY)
-    console.log(response.log); // response.log.insertId (INSERTED IDENTITY)
+    console.log(response.user); // response.user.identity (INSERTED IDENTITY)
+    console.log(response.log); // response.log.identity (INSERTED IDENTITY)
 });
 ```
 

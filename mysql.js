@@ -928,10 +928,12 @@ Agent.prototype._prepare = function(callback) {
                 if (self.isTransaction)
                     self.isRollback = true;
             } else {
+
                 if (current.type === 'insert') {
                     self.id = rows.insertId;
                     if (self.isPut === false)
                         self.$id = self.id;
+                    rows.identity = self.id;
                 }
 
                 if (current.first && current.column) {
