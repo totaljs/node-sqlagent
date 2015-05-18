@@ -259,6 +259,7 @@ sql.exec();
 var user = sql.insert('user', 'tbl_user');
 user.set('name', 'Peter');
 
+// Lock latest inserted identificator
 sql.lock();
 // is same as
 // sql.put(sql.$$);
@@ -465,8 +466,6 @@ sql.insert('user', 'tbl_user').set('name', 'Peter');
 
 sql.bookmark(function() {
     console.log(sql.id);
-    // or 
-    // console.log(sql.$$());
 });
 
 sql.exec();

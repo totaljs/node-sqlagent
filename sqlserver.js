@@ -347,13 +347,14 @@ SqlBuilder.prototype.toString = function(id) {
 };
 
 function Agent(options, error, id) {
-    this.$id = id;
+    this.$conn = id === undefined ? JSON.stringify(options) : id;
     this.options = options;
     this.command = [];
     this.db = null;
     this.done = null;
     this.last = null;
     this.id = null;
+    this.$id = null;
     this.isCanceled = false;
     this.index = 0;
     this.isPut = false;
@@ -373,7 +374,7 @@ Agent.prototype = {
     get $$() {
         var self = this;
         return function() {
-            return self.id;
+            return self.$id;
         };
     }
 };
@@ -920,9 +921,9 @@ Agent.prototype._prepare = function(callback) {
 
         if (item.type === 'put') {
             if (item.disable)
-                self.id = null;
+                self.$id = null;
             else
-                self.id = typeof(item.params) === 'function' ? item.params() : item.params;
+                self.$id = typeof(item.params) === 'function' ? item.params() : item.params;
             self.isPut = !self.disable;
             next();
             return;
@@ -962,7 +963,7 @@ Agent.prototype._prepare = function(callback) {
         }
 
         if (current.params instanceof SqlBuilder) {
-            current.query = current.params.prepare(current.query) + current.params.toString(self.id);
+            current.query = current.params.prepare(current.query) + current.params.toString(self.$id);
             current.params = undefined;
         }
 
@@ -973,8 +974,11 @@ Agent.prototype._prepare = function(callback) {
                     self.isRollback = true;
             } else {
 
-                if (self.isPut === false && current.type === 'insert')
+                if (current.type === 'insert') {
                     self.id = rows.length > 0 ? rows[0].insertId : null;
+                    if (self.isPut === false)
+                        self.$id = self.id;
+                }
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
@@ -1116,29 +1120,26 @@ Agent.prototype.exec = function(callback, returnIndex) {
     if (Agent.debug)
         console.log(self.debugname, '----- exec');
 
-    if (!self.$id) {
+    if (!pools_cache[self.$conn]) {
         if (typeof(self.options) === 'string') {
-            self.$id = self.options;
-            if (!pools_cache[self.$id]) {
-                var options = Parser.parse(self.options);
-                self.options = {};
-                self.options.server = options.host;
-                if (options.pathname && options.pathname.length > 1)
-                    self.options.database = options.pathname.substring(1);
-                if (options.port)
-                    self.options.port = options.port;
-                var auth = options.auth;
-                if (auth) {
-                    auth = auth.split(':');
-                    self.options.user = auth[0];
-                    self.options.password = auth[1];
-                }
-                pools_cache[self.$id] = self.options;
+            var options = Parser.parse(self.options);
+            self.options = {};
+            self.options.server = options.host;
+            if (options.pathname && options.pathname.length > 1)
+                self.options.database = options.pathname.substring(1);
+            if (options.port)
+                self.options.port = options.port;
+            var auth = options.auth;
+            if (auth) {
+                auth = auth.split(':');
+                self.options.user = auth[0];
+                self.options.password = auth[1];
             }
-        } else {
-            self.$id = JSON.stringify(self.options);
-        }
-    }
+            pools_cache[self.$conn] = self.options;
+        } else
+            pools_cache[self.$conn] = self.options;
+    } else
+        self.options = pools_cache[self.$conn];
 
     self.db = new database.Connection(self.options, function(err) {
         if (err) {

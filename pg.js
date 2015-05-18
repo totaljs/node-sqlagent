@@ -326,6 +326,7 @@ function Agent(options, error) {
     this.done = null;
     this.last = null;
     this.id = null;
+    this.$id = null;
     this.isCanceled = false;
     this.index = 0;
     this.isPut = false;
@@ -343,7 +344,7 @@ Agent.prototype = {
     get $$() {
         var self = this;
         return function() {
-            return self.id;
+            return self.$id;
         };
     }
 };
@@ -874,9 +875,9 @@ Agent.prototype._prepare = function(callback) {
 
         if (item.type === 'put') {
             if (item.disable)
-                self.id = null;
+                self.$id = null;
             else
-                self.id = typeof(item.params) === 'function' ? item.params() : item.params;
+                self.$id = typeof(item.params) === 'function' ? item.params() : item.params;
             self.isPut = !self.disable;
             next();
             return;
@@ -929,8 +930,11 @@ Agent.prototype._prepare = function(callback) {
             } else {
                 var rows = result.rows;
 
-                if (self.isPut === false && current.type === 'insert')
-                    self.id = rows[0].insertId;
+                if (current.type === 'insert') {
+                    self.id = rows.length > 0 ? rows[0].insertId : null;
+                    if (self.isPut === false)
+                        self.$id = self.id;
+                }
 
                 if (current.first && current.column) {
                     if (rows.length > 0)

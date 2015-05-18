@@ -325,13 +325,14 @@ SqlBuilder.prototype.toString = function(id) {
 };
 
 function Agent(options, error, id) {
-    this.$id = id;
+    this.$conn = id === undefined ? JSON.stringify(options) : id;
     this.options = options;
     this.command = [];
     this.db = null;
     this.done = null;
     this.last = null;
     this.id = null;
+    this.$id = null;
     this.isCanceled = false;
     this.index = 0;
     this.isPut = false;
@@ -349,7 +350,7 @@ Agent.prototype = {
     get $$() {
         var self = this;
         return function() {
-            return self.id;
+            return self.$id;
         };
     }
 };
@@ -869,9 +870,9 @@ Agent.prototype._prepare = function(callback) {
 
         if (item.type === 'put') {
             if (item.disable)
-                self.id = null;
+                self.$id = null;
             else
-                self.id = typeof(item.params) === 'function' ? item.params() : item.params;
+                self.$id = typeof(item.params) === 'function' ? item.params() : item.params;
             self.isPut = !self.disable;
             next();
             return;
@@ -911,7 +912,7 @@ Agent.prototype._prepare = function(callback) {
         }
 
         if (current.params instanceof SqlBuilder) {
-            current.query = current.query + current.params.toString(self.id);
+            current.query = current.query + current.params.toString(self.$id);
             current.params = undefined;
         } else
             current.params = prepare_params(current.params);
@@ -922,8 +923,11 @@ Agent.prototype._prepare = function(callback) {
                 if (self.isTransaction)
                     self.isRollback = true;
             } else {
-                if (self.isPut === false && current.type === 'insert')
+                if (current.type === 'insert') {
                     self.id = rows.insertId;
+                    if (self.isPut === false)
+                        self.$id = self.id;
+                }
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
@@ -1054,36 +1058,26 @@ Agent.prototype.exec = function(callback, returnIndex) {
     if (Agent.debug)
         console.log(self.debugname, '----- exec');
 
-    if (!self.$id) {
+    if (!pools_cache[self.$conn]) {
         if (typeof(self.options) === 'string') {
-
-            self.$id = self.options;
-
-            if (!pools_cache[self.$id]) {
-                var options = Parser.parse(self.options);
-                self.options = {};
-                self.options.host = options.host;
-                if (options.pathname && options.pathname.length > 1)
-                    self.options.database = options.pathname.substring(1);
-                if (options.port)
-                    self.options.port = options.port;
-                var auth = options.auth;
-                if (auth) {
-                    auth = auth.split(':');
-                    self.options.user = auth[0];
-                    self.options.password = auth[1];
-                }
+            var options = Parser.parse(self.options);
+            self.options = {};
+            self.options.host = options.host;
+            if (options.pathname && options.pathname.length > 1)
+                self.options.database = options.pathname.substring(1);
+            if (options.port)
+                self.options.port = options.port;
+            var auth = options.auth;
+            if (auth) {
+                auth = auth.split(':');
+                self.options.user = auth[0];
+                self.options.password = auth[1];
             }
-
-        } else {
-            self.$id = JSON.stringify(self.options);
         }
+        pools_cache[self.$conn] = database.createPool(self.options);
     }
 
-    if (!pools_cache[self.$id])
-        pools_cache[self.$id] = database.createPool(self.options);
-
-    pools_cache[self.$id].getConnection(function(err, connection) {
+    pools_cache[self.$conn].getConnection(function(err, connection) {
 
         if (err) {
             callback.call(self, err, null);
