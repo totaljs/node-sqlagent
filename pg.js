@@ -1098,11 +1098,88 @@ Agent.prototype.$$exec = function(returnIndex) {
     var self = this;
     return function(callback) {
         return self.exec(callback, returnIndex);
-    }
+    };
 };
 
 Agent.destroy = function() {
     throw new Error('Not supported.');
+};
+
+Agent.prototype.writeFile = function(filestream, callback, buffersize) {
+    var self = this;
+    database.connect(self.options, function(err, client, done) {
+
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        var LargeObjectManager = require('pg-large-object').LargeObjectManager;
+        var man = new LargeObjectManager(client);
+        client.query('BEGIN', function(err, result) {
+
+            if (err) {
+                done();
+                callback(err);
+                return;
+            }
+
+            man.createAndWritableStream(buffersize || 16384, function(err, oid, stream) {
+
+                if (err) {
+                    done();
+                    callback(err);
+                    return;
+                }
+
+                stream.on('finish', function() {
+                    client.query('COMMIT');
+                    done();
+                    callback(null, oid);
+                });
+
+                filestream.pipe(stream);
+            });
+        });
+    });
+};
+
+Agent.prototype.readFile = function(oid, callback, buffersize) {
+    var self = this;
+    database.connect(self.options, function(err, client, done) {
+
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        var LargeObjectManager = require('pg-large-object').LargeObjectManager;
+        var man = new LargeObjectManager(client);
+        client.query('BEGIN', function(err, result) {
+
+            if (err) {
+                done();
+                callback(err);
+                return;
+            }
+
+            man.openAndReadableStream(oid, buffersize || 16384, function(err, size, stream) {
+
+                if (err) {
+                    done();
+                    callback(err);
+                    return;
+                }
+
+                stream.on('end', function() {
+                    client.query('COMMIT');
+                    done();
+                });
+
+                callback(null, stream, size);
+            });
+        });
+    });
 };
 
 // Author: https://github.com/segmentio/pg-escape
