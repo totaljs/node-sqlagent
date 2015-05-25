@@ -1109,8 +1109,9 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
     var self = this;
 
     if (typeof(buffersize) === 'function') {
-        callback = buffersize
-        buffersize = callback;
+        var tmp = callback;
+        callback = buffersize;
+        buffersize = tmp;
     }
 
     database.connect(self.options, function(err, client, done) {
@@ -1154,8 +1155,9 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
     var self = this;
 
     if (typeof(buffersize) === 'function') {
-        callback = buffersize
-        buffersize = callback;
+        var tmp = callback;
+        callback = buffersize;
+        buffersize = tmp;
     }
 
     database.connect(self.options, function(err, client, done) {
