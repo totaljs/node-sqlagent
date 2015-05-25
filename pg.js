@@ -1105,8 +1105,14 @@ Agent.destroy = function() {
     throw new Error('Not supported.');
 };
 
-Agent.prototype.writeFile = function(filestream, callback, buffersize) {
+Agent.prototype.writeStream = function(filestream, buffersize, callback) {
     var self = this;
+
+    if (typeof(buffersize) === 'function') {
+        callback = buffersize
+        buffersize = callback;
+    }
+
     database.connect(self.options, function(err, client, done) {
 
         if (err) {
@@ -1144,8 +1150,14 @@ Agent.prototype.writeFile = function(filestream, callback, buffersize) {
     });
 };
 
-Agent.prototype.readFile = function(oid, callback, buffersize) {
+Agent.prototype.readStream = function(oid, buffersize, callback) {
     var self = this;
+
+    if (typeof(buffersize) === 'function') {
+        callback = buffersize
+        buffersize = callback;
+    }
+
     database.connect(self.options, function(err, client, done) {
 
         if (err) {
