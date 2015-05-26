@@ -717,7 +717,7 @@ Agent.prototype.builder = function(name) {
     for (var i = 0, length = self.command.length; i < length; i++) {
         var command = self.command[i];
         if (command.name === name)
-            return command.condition;
+            return command.values ? command.values : command.condition;
     }
 };
 

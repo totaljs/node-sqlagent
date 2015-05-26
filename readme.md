@@ -203,7 +203,7 @@ var count = sql.count('users', 'tbl_user');
 count.between('age', 20, 40);
 
 sql.exec(function(err, response) {
-    console.log(response.users);
+    console.log(response.users); // response.users === number
 });
 ```
 
@@ -222,7 +222,7 @@ var max = sql.max('users', 'tbl_user', 'age');
 max.where('isremoved', false);
 
 sql.exec(function(err, response) {
-    console.log(response.users);
+    console.log(response.users); // response.users === number
 });
 ```
 
