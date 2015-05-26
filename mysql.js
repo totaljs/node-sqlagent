@@ -237,8 +237,10 @@ SqlBuilder.prototype.scope = function(fn) {
 
 SqlBuilder.prototype.in = function(name, value) {
     var self = this;
-    if (!(value instanceof Array))
+    if (!(value instanceof Array)) {
+        self.where(name, value);
         return self;
+    }
     self.checkOperator();
     var values = [];
     for (var i = 0, length = value.length; i < length; i++)
