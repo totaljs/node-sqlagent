@@ -192,7 +192,7 @@ SqlBuilder.column = function(name) {
         return val;
     var index = name.indexOf('.');
     if (index === -1)
-        return columns_cache[name] = name;
+        return columns_cache[name] = '`' + name + '`';
     return columns_cache[name] = name.substring(0, index) + '.`' + name.substring(index + 1) + '`';
 };
 

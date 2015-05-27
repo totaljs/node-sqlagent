@@ -1,6 +1,7 @@
 var database = require('pg');
 var Events = require('events');
 var queries = {};
+var columns_cache = {};
 
 require('./index');
 
@@ -184,7 +185,13 @@ SqlBuilder.escape = function(value) {
 };
 
 SqlBuilder.column = function(name) {
-    return name;
+    var val = columns_cache[name];
+    if (val)
+        return val;
+    var index = name.indexOf('.');
+    if (index === -1)
+        return columns_cache[name] = '"' + name + '"';
+    return columns_cache[name] = name.substring(0, index) + '."' + name.substring(index + 1) + '"';
 };
 
 SqlBuilder.prototype.group = function(names) {
