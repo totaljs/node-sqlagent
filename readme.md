@@ -488,6 +488,20 @@ sql.bookmark(function() {
 sql.exec();
 ```
 
+### Expected values? No problem
+
+```plain
+sql.expected(name, index, property); // gets a specific value from the array
+sql.expected(name, property);
+```
+
+```javascript
+sql.select('user', 'tbl_user').where('id', 1).first();
+sql.select('products', 'tbl_product').where('iduser', sql.expected('user', 'id'));
+
+sql.exec();
+```
+
 ### Measuring time
 
 ```javascript

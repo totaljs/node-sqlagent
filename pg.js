@@ -12,6 +12,7 @@ function SqlBuilder(skip, take) {
     this._take = take >= 0 ? take : 0;
     this._set = null;
     this.hasOperator = false;
+    this._fn;
 }
 
 SqlBuilder.prototype = {
@@ -26,7 +27,7 @@ SqlBuilder.prototype.set = function(name, value) {
         self._set = {};
 
     if (typeof(name) === 'string') {
-        self._set[name] = value === '$' ? '$' : value;
+        self._set[name] = value === '$' ? '#00#' : value;
         return self;
     }
 
@@ -35,7 +36,7 @@ SqlBuilder.prototype.set = function(name, value) {
     for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
         var val = name[key];
-        self._set[key] = val === '$' ? '$' : val;
+        self._set[key] = val === '$' ? '#00#' : val;
     }
 
     return self;
@@ -123,12 +124,20 @@ SqlBuilder.prototype.push = function(name, operator, value) {
     } else if (operator === '!=')
         operator = '<>';
 
+    var is = false;
+
     // I expect Agent.$$
-    if (typeof(value) === 'function')
-        value = '$';
+    if (typeof(value) === 'function') {
+        if (!self._fn)
+            self._fn = {};
+        var key = Math.floor(Math.random() * 1000000);
+        self._fn[key] = value;
+        value = '#' + key + '#';
+        is = true;
+    }
 
     self.checkOperator();
-    self.builder.push(SqlBuilder.column(name) + operator + (value === '$' ? '$' : SqlBuilder.escape(value)));
+    self.builder.push(SqlBuilder.column(name) + operator + (is ? value : SqlBuilder.escape(value)));
     return self;
 };
 
@@ -159,7 +168,6 @@ SqlBuilder.escape = function(value) {
 
     if (type === 'function') {
         value = value();
-
         if (value === null || value === undefined)
             return 'null';
 
@@ -324,9 +332,17 @@ SqlBuilder.prototype.toString = function(id) {
     var where = self.builder.join(' ');
 
     if (id === undefined || id === null)
-        id = 0;
+        id = null;
 
-    where = where.replace(/\$(?=\s|$)/g, SqlBuilder.escape(id));
+    if (self._fn) {
+        where = where.replace(/\#\d+\#/g, function(text) {
+            if (text === '#00#')
+                return SqlBuilder.escape(id);
+            var output = self._fn[parseInt(text.substring(1, text.length - 1))];
+            return SqlBuilder.escape(output);
+        });
+    }
+
     return ' WHERE ' + where + order + plus;
 };
 
@@ -347,6 +363,7 @@ function Agent(options, error) {
     this.errors = this.isErrorBuilder ? error : null;
     this.time;
     this.$primary = 'id';
+    this.results;
 }
 
 Agent.prototype = {
@@ -395,6 +412,28 @@ Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
         name = 'id';
     self.command.push({ type: 'primary', name: name });
     return self;
+};
+
+Agent.prototype.expected = function(name, index, property) {
+
+    var self = this;
+
+    if (typeof(index) === 'string') {
+        property = index;
+        index = undefined;
+    }
+
+    return function() {
+        var output = self.results[name];
+        if (!output)
+            return null;
+        if (index === undefined)
+            return output[property];
+        output = output[index];
+        if (output)
+            return output[property];
+        return null;
+    };
 };
 
 Agent.prototype.prepare = function(fn) {
@@ -830,9 +869,9 @@ Agent.prototype.rollback = function(where, e, next) {
 
 Agent.prototype._prepare = function(callback) {
 
-    var results = {};
     var self = this;
 
+    self.results = {};
     self.isRollback = false;
     self.isTransaction = false;
 
@@ -843,7 +882,7 @@ Agent.prototype._prepare = function(callback) {
 
         if (item.type === 'validate') {
             try {
-                item.fn(self.errors, results, function(output) {
+                item.fn(self.errors, self.results, function(output) {
                     if (output === true || output === undefined)
                         return next();
                     // reason
@@ -869,7 +908,7 @@ Agent.prototype._prepare = function(callback) {
 
         if (item.type === 'bookmark') {
             try {
-                item.fn(self.errors, results);
+                item.fn(self.errors, self.results);
                 return next();
             } catch (e) {
                 self.rollback('bookmark', e, next);
@@ -884,7 +923,7 @@ Agent.prototype._prepare = function(callback) {
 
         if (item.type === 'prepare') {
             try {
-                item.fn(self.errors, results, function() {
+                item.fn(self.errors, self.results, function() {
                     next();
                 });
             } catch (e) {
@@ -964,12 +1003,12 @@ Agent.prototype._prepare = function(callback) {
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
-                        results[current.name] = rows[0][current.column];
+                        self.results[current.name] = rows[0][current.column];
                 } else if (current.first)
-                    results[current.name] = rows instanceof Array ? rows[0] : rows;
+                    self.results[current.name] = rows instanceof Array ? rows[0] : rows;
                 else
-                    results[current.name] = rows;
-                self.emit('data', current.name, results);
+                    self.results[current.name] = rows;
+                self.emit('data', current.name, self.results);
             }
             self.last = item.name;
             next();
@@ -1058,10 +1097,10 @@ Agent.prototype._prepare = function(callback) {
         if (Agent.debug)
             console.log(self.debugname, '----- done (' + self.time + ' ms)');
 
-        self.emit('end', err, results, self.time);
+        self.emit('end', err, self.results, self.time);
 
         if (callback)
-            callback(err, self.returnIndex !== undefined ? results[self.returnIndex] : results);
+            callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
     });
 
     return self;
