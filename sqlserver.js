@@ -15,6 +15,7 @@ function SqlBuilder(skip, take) {
     this._set = null;
     this._define;
     this._fn;
+    this._join;
     this.hasOperator = false;
 }
 
@@ -22,6 +23,18 @@ SqlBuilder.prototype = {
     get data() {
         return this._set;
     }
+};
+
+SqlBuilder.prototype.join = function(name, on, type) {
+    var self = this;
+    if (!self._join)
+        self._join = [];
+
+    if (!type)
+        type = 'left'
+
+    self._join.push(type + ' join ' + name + ' on ' + on);
+    return self;
 };
 
 SqlBuilder.prototype.prepare = function(query) {
@@ -331,6 +344,10 @@ SqlBuilder.prototype.toString = function(id) {
     var self = this;
     var plus = '';
     var order = '';
+    var join = '';
+
+    if (self._join)
+        join = self._join.join(' ') + ' ';
 
     if (self._order)
         order = ' ORDER BY ' + self._order.join(',');
@@ -346,7 +363,7 @@ SqlBuilder.prototype.toString = function(id) {
         throw new Error('ORDER BY is missing.');
 
     if (self.builder.length === 0)
-        return order + plus;
+        return (join ? join + ' ' : '') + order + plus;
 
     var where = self.builder.join(' ');
 
@@ -362,7 +379,7 @@ SqlBuilder.prototype.toString = function(id) {
         });
     }
 
-    return ' WHERE ' + where + order + plus;
+    return (join ? ' ' + join : '') + ' WHERE ' + where + order + plus;
 };
 
 function Agent(options, error, id) {

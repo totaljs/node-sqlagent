@@ -569,8 +569,8 @@ builder.set(name, value)
 
 adds a value for update or insert
 
-- `name` (String) a column name
-- `value` (Object) a value
+- `name` (String) column name
+- `value` (Object) value
 
 ---
 
@@ -596,7 +596,7 @@ builder.order(name, [desc])
 ```
 adds sorting
 
-- `name` (String) a column name
+- `name` (String) column name
 - `desc` (Boolean), default: false
 
 ---
@@ -645,6 +645,20 @@ sets sql.take(1)
 
 ---
 
+#### builder.join()
+
+```plain
+builder.set(name, on, [type])
+```
+
+adds a value for update or insert
+
+- `name` (String) table name
+- `on` (String) condition
+- `type` (String) optional, inner type `inner`, `left` (default), `right`
+
+---
+
 #### builder.where()
 
 ```plain
@@ -653,7 +667,7 @@ builder.push(name, [operator], value)
 ```
 add a condition after SQL WHERE
 
-- `name` (String) a column name
+- `name` (String) column name
 - `operator` (String), optional `>`, `<`, `<>`, `=` (default)
 - `value` (Object)
 
@@ -706,7 +720,7 @@ builder.in(name, value)
 ```
 adds IN to SQL query
 
-- `name` (String), a column name
+- `name` (String), column name
 - `value` (String, Number or String Array, Number Array)
 
 ---
@@ -718,7 +732,7 @@ builder.between(name, a, b)
 ```
 adds between to SQL query
 
-- `name` (String), a column name
+- `name` (String), column name
 - `a` (Number)
 - `b` (Number)
 
@@ -731,8 +745,8 @@ builder.like(name, value, [where])
 ```
 adds like command
 
-- `name` (String) a column name
-- `value` (String) a value to search
+- `name` (String) column name
+- `value` (String) value to search
 - `where` (String) optional, e.g. `beg`, `end`, `*` ==> %search (beg), search% (end), %search% (*)
 
 ---
