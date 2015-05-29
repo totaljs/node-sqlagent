@@ -682,6 +682,7 @@ Agent.prototype.select = function(name, table, schema, without, skip, take) {
     } else if (typeof(schema) === 'string') {
         columns = [schema];
     } else {
+        columns = [];
         var arr = Object.keys(schema);
         for (var i = 0, length = arr.length; i < length; i++) {
             if (without && without.indexOf(arr[i]) !== -1)
