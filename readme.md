@@ -51,7 +51,7 @@ var sql = new Agent({ server: '...', database: '...' });
 // Below code rewrites total.js database prototype
 require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug is by default: false
 require('sqlagent/mysql').init('connetion-string-to-mysql', [debug]); // debug is by default: false
-require('sqlagent/sqlserver').init('connetion-string-to-mysql', [debug]); // debug is by default: false
+require('sqlagent/sqlserver').init('connetion-string-to-sqlserver', [debug]); // debug is by default: false
 
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
@@ -648,7 +648,7 @@ sets sql.take(1)
 #### builder.join()
 
 ```plain
-builder.set(name, on, [type])
+builder.join(name, on, [type])
 ```
 
 adds a value for update or insert
@@ -656,6 +656,10 @@ adds a value for update or insert
 - `name` (String) table name
 - `on` (String) condition
 - `type` (String) optional, inner type `inner`, `left` (default), `right`
+
+```javascript
+builder.join('address', 'address.id=user.idaddress');
+```
 
 ---
 
