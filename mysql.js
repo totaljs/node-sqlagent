@@ -57,6 +57,54 @@ SqlBuilder.prototype.set = function(name, value) {
     return self;
 };
 
+SqlBuilder.prototype.inc = function(name, type, value) {
+
+    var self = this;
+    var can = false;
+
+    if (!self._set)
+        self._set = {};
+
+    if (value === undefined) {
+        value = type;
+        type = '+';
+        can = true;
+    }
+
+    if (typeof(name) === 'string') {
+
+        if (can && typeof(value) === 'string') {
+            type = value[0];
+            value = parseInt(value.substring(1));
+            if (isNaN(value))
+                return self;
+        }
+
+        name = type + name;
+        self._set[name] = value === '$' ? '#00#' : value;
+        return self;
+    }
+
+    var keys = Object.keys(name);
+
+    for (var i = 0, length = keys.length; i < length; i++) {
+        var key = keys[i];
+        var val = name[key];
+
+        if (can && typeof(val) === 'string') {
+            type = val[0];
+            val = parseInt(val.substring(1));
+            if (isNaN(val))
+                continue;
+        }
+
+        key = type + key;
+        self._set[key] = val === '$' ? '#00#' : val;
+    }
+
+    return self;
+};
+
 SqlBuilder.prototype.sort = function(name, desc) {
     return this.order(name, desc);
 };
@@ -623,7 +671,28 @@ Agent.prototype._update = function(item) {
         if (type === 'string')
             value = value.trim();
 
-        columns.push('`' + key + '`=?');
+        switch (key[0]) {
+            case '+':
+                key = key.substring(1);
+                columns.push('`' + key + '`=COALESCE(`' + key + '`,0)+?');
+                break;
+            case '-':
+                key = key.substring(1);
+                columns.push('`' + key + '`=COALESCE(`' + key + '`,0)-?');
+                break;
+            case '*':
+                key = key.substring(1);
+                columns.push('`' + key + '`=COALESCE(`' + key + '`,0)*?');
+                break;
+            case '/':
+                key = key.substring(1);
+                columns.push('`' + key + '`=COALESCE(`' + key + '`,0)/?');
+                break;
+            default:
+                columns.push('`' + key + '`=?');
+                break;
+        }
+
         params.push(value === undefined ? null : value);
     }
 

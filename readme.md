@@ -577,13 +577,37 @@ adds a value for update or insert
 ```plain
 builder.set(obj)
 ```
-adds a object for update or insert value collection
+adds an object for update or insert value collection
 
 ```javascript
 builder.set({ name: 'Peter', age: 30 });
 // is same as
 // builder.set('name', 'Peter');
 // builder.set('age', 30);
+```
+
+---
+
+#### builder.inc()
+
+```plain
+builder.set(name, [type], value)
+```
+
+adds a value for update or insert
+
+- `name` (String) column name
+- `type` (String) increment type (`+` (default), `-`, `*`, `/`)
+- `value` (Number) value
+
+```javascript
+builder.inc('countupdate', 1);
+builder.inc('countview', '+', 1);
+builder.inc('credits', '-', 1);
+
+// Short write
+builder.inc('countupdate', '+1');
+builder.inc('credits', '-1');
 ```
 
 ---
