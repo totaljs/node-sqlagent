@@ -612,16 +612,16 @@ Agent.prototype.commit = function() {
 
 function prepareValue(value) {
 
-    if (value === undefined)
+    if (value === undefined || value === null)
         return null;
 
     var type = typeof(value);
 
     if (type === 'function')
-        value = value();
+        return value();
 
     if (type === 'string')
-        value = value.trim();
+        return value.trim();
 
     return value;
 }
