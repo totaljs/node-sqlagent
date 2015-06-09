@@ -813,6 +813,22 @@ Agent.prototype.builder = function(name) {
     }
 };
 
+Agent.prototype.exists = function(name, table) {
+    var self = this;
+
+    if (typeof(table) !== 'string') {
+        table = name;
+        name = self.index++;
+    }
+
+    if (!column)
+        column = '*';
+
+    var condition = new SqlBuilder();
+    self.command.push({ type: 'query', query: 'SELECT 1 as sqlagentcolumn_e FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn_e' });
+    return condition;
+};
+
 Agent.prototype.count = function(name, table, column) {
     var self = this;
 
@@ -1089,7 +1105,7 @@ Agent.prototype._prepare = function(callback) {
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
-                        self.results[current.name] = rows[0][current.column];
+                        self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : rows[0][current.column];
                 } else if (current.first)
                     self.results[current.name] = rows instanceof Array ? rows[0] : rows;
                 else

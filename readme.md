@@ -226,6 +226,42 @@ sql.exec(function(err, response) {
 });
 ```
 
+### Exists
+
+```plain
+instance.exists([name], table)
+```
+
+- __returns__ SqlBuilder
+
+```javascript
+var exists = sql.exists('user', 'tbl_user');
+exists.where('id', 35);
+
+sql.exec(function(err, response) {
+    console.log(response.user); // response.user === Boolean (in correct case otherwise undefined)
+});
+```
+
+---
+
+```plain
+instance.max([name], table, column)
+instance.min([name], table, column)
+instance.avg([name], table, column)
+```
+
+- __returns__ SqlBuilder
+
+```javascript
+var max = sql.max('users', 'tbl_user', 'age');
+max.where('isremoved', false);
+
+sql.exec(function(err, response) {
+    console.log(response.users); // response.users === number
+});
+```
+
 ### Transactions
 
 - rollback is performed automatically
