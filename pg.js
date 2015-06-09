@@ -756,6 +756,12 @@ Agent.prototype.insert = function(name, table, values, without) {
         name = self.index++;
     }
 
+    if (values instanceof Array) {
+        var tmp = without;
+        without = values;
+        values = tmp;
+    }
+
     var is = false;
     if (!values) {
         is = true;
@@ -906,6 +912,12 @@ Agent.prototype.update = function(name, table, values, without) {
         values = table;
         table = name;
         name = self.index++;
+    }
+
+    if (values instanceof Array) {
+        var tmp = without;
+        without = values;
+        values = tmp;
     }
 
     var condition;
