@@ -940,8 +940,11 @@ Agent.prototype.expected = function(name, index, property) {
         var output = self.results[name];
         if (!output)
             return null;
-        if (index === undefined)
+        if (index === undefined) {
+            if (property === undefined)
+                return output;
             return output[property];
+        }
         output = output[index];
         if (output)
             return output[property];
