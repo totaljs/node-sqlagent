@@ -741,7 +741,7 @@ Agent.prototype._update = function(item) {
 };
 
 Agent.prototype._select = function(item) {
-    return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: item.condition._take === 1 };
+    return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: item.condition._take === 1, datatype: item.datatype };
 };
 
 Agent.prototype._delete = function(item) {
@@ -851,7 +851,7 @@ Agent.prototype.count = function(name, table, column) {
         column = '*';
 
     var condition = new SqlBuilder();
-    self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
     return condition;
 };
 
@@ -863,7 +863,7 @@ Agent.prototype.max = function(name, table, column) {
     }
 
     var condition = new SqlBuilder();
-    self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
     return condition;
 };
 
@@ -875,7 +875,7 @@ Agent.prototype.min = function(name, table, column) {
     }
 
     var condition = new SqlBuilder();
-    self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
     return condition;
 };
 
@@ -887,7 +887,7 @@ Agent.prototype.avg = function(name, table, column) {
     }
 
     var condition = new SqlBuilder();
-    self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+    self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
     return condition;
 };
 
@@ -1114,14 +1114,25 @@ Agent.prototype._prepare = function(callback) {
                 var rows = result.rows;
 
                 if (current.type === 'insert') {
-                    self.id = rows.length > 0 ? rows[0].identity : null;
+
+                    if (rows.length > 0) {
+                        var tmp = parseInt(rows[0].identity);
+                        if (isNaN(tmp)) {
+                            self.id = rows[0].identity;
+                        } else {
+                            self.id = tmp;
+                            rows[0].identity = tmp;
+                        }
+                    } else
+                        self.id = null;
+
                     if (self.isPut === false)
                         self.$id = self.id;
                 }
 
                 if (current.first && current.column) {
                     if (rows.length > 0)
-                        self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : rows[0][current.column];
+                        self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseInt(rows[0][current.column]) : rows[0][current.column];
                 } else if (current.first)
                     self.results[current.name] = rows instanceof Array ? rows[0] : rows;
                 else
@@ -1314,6 +1325,48 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
                 });
 
                 filestream.pipe(stream);
+            });
+        });
+    });
+};
+
+Agent.prototype.writeBuffer = function(buffer, callback) {
+    var self = this;
+
+    database.connect(self.options, function(err, client, done) {
+
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        var LargeObjectManager = require('pg-large-object').LargeObjectManager;
+        var man = new LargeObjectManager(client);
+        var buffersize = buffer.length;
+
+        client.query('BEGIN', function(err, result) {
+
+            if (err) {
+                done();
+                callback(err);
+                return;
+            }
+
+            man.createAndWritableStream(buffersize, function(err, oid, stream) {
+
+                if (err) {
+                    done();
+                    callback(err);
+                    return;
+                }
+
+                stream.on('finish', function() {
+                    client.query('COMMIT');
+                    done();
+                    callback(null, oid);
+                });
+
+                stream.end(buffer);
             });
         });
     });
