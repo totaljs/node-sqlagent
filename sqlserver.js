@@ -245,6 +245,31 @@ SqlBuilder.prototype.clear = function() {
 	return this;
 };
 
+SqlBuilder.prototype.fields = function() {
+	var self = this;
+	if (!self._fields)
+		self._fields = '';
+
+	if (arguments[0] instanceof Array) {
+		var arr = arguments[0];
+		for (var i = 0, length = arr.length; i < length; i++)
+			self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arr[i]);
+		return self;
+	}
+
+	for (var i = 0; i < arguments.length; i++)
+		self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arguments[i]);
+	return self;
+};
+
+SqlBuilder.prototype.field = function(name) {
+	var self = this;
+	if (!self._fields)
+		self._fields = '';
+	self._fields += (self._fields ? ',' : '') + SqlBuilder.column(name);
+	return self;
+};
+
 SqlBuilder.escape = function(value) {
 
 	if (value === null || value === undefined)
@@ -436,6 +461,19 @@ SqlBuilder.prototype.toString = function(id) {
 	}
 
 	return (join ? ' ' + join : '') + ' WHERE ' + where + order + plus;
+};
+
+SqlBuilder.prototype.make = function(fn) {
+	var self = this;
+	fn.call(self, self)
+	return self;
+};
+
+SqlBuilder.prototype.toQuery = function(query) {
+	var self = this;
+	if (!self._fields)
+		return query;
+	return query.replace(/\*/i, self._fields);
 };
 
 function Agent(options, error, id) {

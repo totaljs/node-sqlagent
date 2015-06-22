@@ -13,6 +13,7 @@ function SqlBuilder(skip, take) {
 	this._set = null;
 	this._fn;
 	this._join;
+	this._fields;
 	this.hasOperator = false;
 }
 
@@ -52,6 +53,31 @@ SqlBuilder.prototype.set = function(name, value) {
 		self._set[key] = val === '$' ? '#00#' : val;
 	}
 
+	return self;
+};
+
+SqlBuilder.prototype.fields = function() {
+	var self = this;
+	if (!self._fields)
+		self._fields = '';
+
+	if (arguments[0] instanceof Array) {
+		var arr = arguments[0];
+		for (var i = 0, length = arr.length; i < length; i++)
+			self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arr[i]);
+		return self;
+	}
+
+	for (var i = 0; i < arguments.length; i++)
+		self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arguments[i]);
+	return self;
+};
+
+SqlBuilder.prototype.field = function(name) {
+	var self = this;
+	if (!self._fields)
+		self._fields = '';
+	self._fields += (self._fields ? ',' : '') + SqlBuilder.column(name);
 	return self;
 };
 
@@ -419,6 +445,19 @@ SqlBuilder.prototype.toString = function(id) {
 	return (join ? ' ' + join : '') + ' WHERE ' + where + order + plus;
 };
 
+SqlBuilder.prototype.toQuery = function(query) {
+	var self = this;
+	if (!self._fields)
+		return query;
+	return query.replace(/\*/i, self._fields);
+};
+
+SqlBuilder.prototype.make = function(fn) {
+	var self = this;
+	fn.call(self, self)
+	return self;
+};
+
 function Agent(options, error) {
 	this.options = options;
 	this.command = [];
@@ -770,7 +809,7 @@ Agent.prototype._update = function(item) {
 };
 
 Agent.prototype._select = function(item) {
-	return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: item.condition._take === 1, datatype: item.datatype };
+	return { name: item.name, query: item.condition.toQuery(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1, datatype: item.datatype };
 };
 
 Agent.prototype._delete = function(item) {
