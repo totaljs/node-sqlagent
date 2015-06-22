@@ -1,27 +1,27 @@
 Array.prototype.sqlagent = function(onItem, callback) {
 
-    var self = this;
-    var item = self.shift();
+	var self = this;
+	var item = self.shift();
 
-    if (item === undefined) {
-        if (callback)
-            callback();
-        return self;
-    }
+	if (item === undefined) {
+		if (callback)
+			callback();
+		return self;
+	}
 
-    onItem.call(self, item, function(val) {
+	onItem.call(self, item, function(val) {
 
-        if (val === false) {
-            self.length = 0;
-            if (callback)
-                callback();
-            return;
-        }
+		if (val === false) {
+			self.length = 0;
+			if (callback)
+				callback();
+			return;
+		}
 
-        setImmediate(function() {
-            self.sqlagent(onItem, callback);
-        });
-    });
+		setImmediate(function() {
+			self.sqlagent(onItem, callback);
+		});
+	});
 
-    return self;
+	return self;
 };

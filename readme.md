@@ -610,6 +610,19 @@ adds a value for update or insert
 
 ---
 
+#### builder.raw()
+
+```plain
+builder.raw(name, value)
+```
+
+adds a raw value for update or insert without SQL encoding
+
+- `name` (String) column name
+- `value` (Object) value
+
+---
+
 ```plain
 builder.set(obj)
 ```
