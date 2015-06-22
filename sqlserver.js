@@ -1133,6 +1133,9 @@ Agent.prototype._prepare = function(callback) {
             current.params = undefined;
         }
 
+        if (current.condition instanceof SqlBuilder)
+            current.query = current.query + current.condition.toString(self.id);
+
         var query = function(err, rows) {
             if (err) {
                 self.errors.push(err.message);

@@ -396,11 +396,11 @@ sql.exec();
 ---
 
 ```plain
-sql.validate(error_message, [result_name_for_validation])
+sql.validate([result_name_for_validation], error_message);
 ```
 
-- `error_message` (String / Error) - error message
-- `result_name_for_validation` (String) a result to compare, optional and default: __latest result__
+- `result_name_for_validation` (String) a result to compare, optional and default: __latest result- `error_message` (String / Error) - error message
+__
 
 If the function throw error then SqlAgent cancel all pending queris (perform Rollback if the agent is in transaction mode) and executes callback with error.
 
