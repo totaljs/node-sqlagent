@@ -815,7 +815,7 @@ Agent.prototype._update = function(item) {
 };
 
 Agent.prototype._select = function(item) {
-	return { name: item.name, query: item.condition.prepare(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1 };
+	return { name: item.name, query: item.condition.toQuery(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1 };
 };
 
 Agent.prototype._delete = function(item) {
