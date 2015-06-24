@@ -853,9 +853,6 @@ Agent.prototype.exists = function(name, table) {
 		name = self.index++;
 	}
 
-	if (!column)
-		column = '*';
-
 	var condition = new SqlBuilder();
 	condition.first();
 	self.command.push({ type: 'query', query: 'SELECT 1 as sqlagentcolumn_e FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn_e' });
