@@ -296,6 +296,7 @@ SqlBuilder.column = function(name) {
 
 	var indexAS = name.toLowerCase().indexOf(' as');
 	var plus = '';
+	var key = name;
 
 	if (indexAS !== -1) {
 		plus = name.substring(indexAS);
@@ -304,9 +305,9 @@ SqlBuilder.column = function(name) {
 
 	var index = name.indexOf('.');
 	if (index === -1)
-		return columns_cache[name] = '`' + name + '`' + plus;
+		return columns_cache[key] = '`' + name + '`' + plus;
 
-	return columns_cache[name] = name.substring(0, index) + '.`' + name.substring(index + 1) + '`' + plus;
+	return columns_cache[key] = name.substring(0, index) + '.`' + name.substring(index + 1) + '`' + plus;
 };
 
 SqlBuilder.prototype.group = function(names) {
