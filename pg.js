@@ -291,10 +291,20 @@ SqlBuilder.column = function(name) {
 	var val = columns_cache[name];
 	if (val)
 		return val;
+
+	var indexAS = name.toLowerCase().indexOf(' as');
+	var plus = '';
+
+	if (indexAS !== -1) {
+		plus = name.substring(indexAS);
+		name = name.substring(0, indexAS);
+	}
+
 	var index = name.indexOf('.');
 	if (index === -1)
-		return columns_cache[name] = '"' + name + '"';
-	return columns_cache[name] = name.substring(0, index) + '."' + name.substring(index + 1) + '"';
+		return columns_cache[name] = '"' + name + '"' + plus;
+
+	return columns_cache[name] = name.substring(0, index) + '."' + name.substring(index + 1) + '"' + plus;
 };
 
 SqlBuilder.prototype.group = function(names) {
