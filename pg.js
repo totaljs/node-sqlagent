@@ -827,6 +827,24 @@ Agent.prototype._delete = function(item) {
 	return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: true };
 };
 
+Agent.prototype.save = function(name, table, insert, maker) {
+
+	if (typeof(table) === 'boolean') {
+		maker = insert;
+		insert = table;
+		table = name;
+		name = undefined;
+	}
+
+	var self = this;
+	if (insert)
+		maker(self.insert(name, table), true);
+	else
+		maker(self.update(name, table), false);
+
+	return self;
+};
+
 Agent.prototype.insert = function(name, table, values, without) {
 
 	var self = this;

@@ -98,6 +98,27 @@ sql.exec(function(err, response) {
 });
 ```
 
+### Save
+
+```plain
+instance.save([name], table, isINSERT, prepare(builder, isINSERT));
+```
+
+```javascript
+sql.save('user', 'tbl_user', somemodel.id === 0, function(builder, isINSERT) {
+
+    builder.set('name', somemodel.name);    
+    
+    if (isINSERT) {
+        builder.set('datecreated', new Date());
+        return;
+    }
+    
+    builder.inc('countupdate', 1);
+    builder.where('id', somemodel.id);
+});
+```
+
 ### Insert
 
 ```plain
