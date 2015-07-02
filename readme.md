@@ -577,6 +577,34 @@ sql.on('data', function(name, response){});
 sql.on('end', function(err, response, time){});
 ```
 
+### Generators in total.js
+
+```javascript
+function *some_action() {
+    var sql = DB();
+
+    sql.select('users', 'tbl_user').make(function(select) {
+        select.where('id', '>', 100);
+        select.and();
+        select.where('id', '<', 1000);
+        select.limit(10);
+    });
+
+    sql.select('products', 'tbl_product').make(function(select) {
+        select.where('price', '<>', 10);
+        select.limit(10);
+    });
+
+    // get all results
+    var results = yield sync(sql.$$exec())();
+    console.log(results);
+
+    // or get a specific result:
+    var result = yield sync(sql.$$exec('users'))();
+    console.log(result);
+}
+```
+
 ### Debug mode
 
 Debug mode writes each query to console.
