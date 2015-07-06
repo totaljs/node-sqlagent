@@ -333,6 +333,7 @@ SqlBuilder.prototype.or = function() {
 	var self = this;
 	if (self.builder.length === 0)
 		return self;
+	self.hasOperator = true;
 	self.builder.push('OR');
 	return self;
 };
