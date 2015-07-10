@@ -107,13 +107,13 @@ instance.save([name], table, isINSERT, prepare(builder, isINSERT));
 ```javascript
 sql.save('user', 'tbl_user', somemodel.id === 0, function(builder, isINSERT) {
 
-    builder.set('name', somemodel.name);    
-    
+    builder.set('name', somemodel.name);
+
     if (isINSERT) {
         builder.set('datecreated', new Date());
         return;
     }
-    
+
     builder.inc('countupdate', 1);
     builder.where('id', somemodel.id);
 });
@@ -394,13 +394,13 @@ select.limit(1);
 
 // IMPORTANT:
 sql.validate(function(error, response, resume) {
-    
+
     if (!response.address) {
         error.push('Sorry, address not found');
         // cancel pending queries
         return resume(false);
     }
-    
+
     sql.builder('user').set('idaddress', response.id);
 
     // continue
@@ -927,6 +927,24 @@ insert.set('credit', 340.34);
 insert.define('credit', 'money');
 sql.exec();
 ```
+
+---
+
+#### builder.schema()
+
+```plain
+builder.schema()
+```
+sets current schema for `join`, `where`, `in`, `between`, `field`, `fields`, `like`
+
+```javascript
+builder.schema('b');
+builder.fields('name', 'age'); // --> b."name", b."age"
+builder.schema('a');
+builder.fields('name', 'age'); // --> a."name", a."age"
+```
+
+---
 
 #### builder.toString()
 

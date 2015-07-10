@@ -14,6 +14,7 @@ function SqlBuilder(skip, take) {
 	this._fn;
 	this._join;
 	this._fields;
+	this._schema;
 	this.hasOperator = false;
 }
 
@@ -30,6 +31,10 @@ SqlBuilder.prototype.join = function(name, on, type) {
 
 	if (!type)
 		type = 'left'
+
+
+	if (self._schema && name.lastIndexOf(' ') === -1)
+		name += ' ' + self._schema;
 
 	self._join.push(type + ' join ' + name + ' on ' + on);
 	return self;
@@ -56,6 +61,11 @@ SqlBuilder.prototype.set = function(name, value) {
 	return self;
 };
 
+SqlBuilder.prototype.schema = function(name) {
+	this._schema = name;
+	return this;
+};
+
 SqlBuilder.prototype.fields = function() {
 	var self = this;
 	if (!self._fields)
@@ -64,12 +74,12 @@ SqlBuilder.prototype.fields = function() {
 	if (arguments[0] instanceof Array) {
 		var arr = arguments[0];
 		for (var i = 0, length = arr.length; i < length; i++)
-			self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arr[i]);
+			self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arr[i], self._schema);
 		return self;
 	}
 
 	for (var i = 0; i < arguments.length; i++)
-		self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arguments[i]);
+		self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arguments[i], self._schema);
 	return self;
 };
 
@@ -77,7 +87,7 @@ SqlBuilder.prototype.field = function(name) {
 	var self = this;
 	if (!self._fields)
 		self._fields = '';
-	self._fields += (self._fields ? ',' : '') + SqlBuilder.column(name);
+	self._fields += (self._fields ? ',' : '') + SqlBuilder.column(name, self._schema);
 	return self;
 };
 
@@ -150,14 +160,14 @@ SqlBuilder.prototype.order = function(name, desc) {
 	var lowered = name.toLowerCase();
 
 	if (lowered.lastIndexOf('desc') !== -1 || lowered.lastIndexOf('asc') !== -1) {
-		self._order.push(name);
+		self._order.push(SqlBuilder.column(name, self._schema));
 		return self;
 	} else if (typeof(desc) === 'boolean')
 		desc = desc === true ? 'DESC' : 'ASC';
 	else
 		desc = 'ASC';
 
-	self._order.push(SqlBuilder.column(name) + ' ' + desc);
+	self._order.push(SqlBuilder.column(name, self._schema) + ' ' + desc);
 	return self;
 };
 
@@ -232,7 +242,7 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 	}
 
 	self.checkOperator();
-	self.builder.push(SqlBuilder.column(name) + operator + (is ? value : SqlBuilder.escape(value)));
+	self.builder.push(SqlBuilder.column(name, self._schema) + operator + (is ? value : SqlBuilder.escape(value)));
 	return self;
 };
 
@@ -287,14 +297,15 @@ SqlBuilder.escape = function(value) {
 	return pg_escape(value.toString());
 };
 
-SqlBuilder.column = function(name) {
-	var val = columns_cache[name];
+SqlBuilder.column = function(name, schema) {
+
+	var cachekey = (schema ? schema + '.' : '') + name;
+	var val = columns_cache[cachekey];
 	if (val)
 		return val;
 
 	var indexAS = name.toLowerCase().indexOf(' as');
 	var plus = '';
-	var key = name;
 
 	if (indexAS !== -1) {
 		plus = name.substring(indexAS);
@@ -303,14 +314,13 @@ SqlBuilder.column = function(name) {
 
 	var index = name.indexOf('.');
 	if (index === -1)
-		return columns_cache[key] = '"' + name + '"' + plus;
-
-	return columns_cache[key] = name.substring(0, index) + '."' + name.substring(index + 1) + '"' + plus;
+		return columns_cache[cachekey] = (schema ? schema + '.' : '') + '"' + name + '"' + plus;
+	return columns_cache[cachekey] = name.substring(0, index) + '."' + name.substring(index + 1) + '"' + plus;
 };
 
 SqlBuilder.prototype.group = function(names) {
 	var self = this;
-	self.builder.push('GROUP BY ' + (names instanceof Array ? names.join(',') : names));
+	self.builder.push('GROUP BY ' + (names instanceof Array ? names.join(',') : SqlBuilder.column(names, self._schema)));
 	return self;
 };
 
@@ -360,7 +370,7 @@ SqlBuilder.prototype.in = function(name, value) {
 	var values = [];
 	for (var i = 0, length = value.length; i < length; i++)
 		values.push(SqlBuilder.escape(value[i]));
-	self.builder.push(SqlBuilder.column(name) + ' IN (' + values.join(',') + ')');
+	self.builder.push(SqlBuilder.column(name, self._schema) + ' IN (' + values.join(',') + ')');
 	return self;
 };
 
@@ -386,14 +396,14 @@ SqlBuilder.prototype.like = function(name, value, where) {
 			break;
 	}
 
-	self.builder.push(SqlBuilder.column(name) + ' LIKE ' + search);
+	self.builder.push(SqlBuilder.column(name, self._schema) + ' LIKE ' + search);
 	return self;
 };
 
 SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	var self = this;
 	self.checkOperator();
-	self.builder.push(SqlBuilder.column(name) + ' BETWEEN ' + valueA + ' AND ' + valueB);
+	self.builder.push(SqlBuilder.column(name, self._schema) + ' BETWEEN ' + SqlBuilder.escape(valueA) + ' AND ' + SqlBuilder.escape(valueB));
 	return self;
 };
 
