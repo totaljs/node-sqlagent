@@ -17,6 +17,7 @@ __IMPORTANT__:
 - code is executed as it's added
 - rollback is executed automatically when is transaction enable
 - SQL Server: pagination works only in SQL SERVER >=2012
+- `SqlBuilder` is a global object
 
 ## Initialization
 
@@ -915,7 +916,7 @@ builder.scope(function() {
 ```plain
 builder.define(name, SQL_TYPE_LOWERCASE);
 ```
-- only for SQL SERVER
+- __only for SQL SERVER__
 - change the param type
 
 ```javascript
@@ -943,6 +944,16 @@ builder.fields('name', 'age'); // --> b."name", b."age"
 builder.schema('a');
 builder.fields('name', 'age'); // --> a."name", a."age"
 ```
+
+#### builder.replace()
+
+```plain
+builder.replace(builder)
+```
+replaces current instance of SqlBuilder with new.
+
+- `builder` (SqlBuilder) Another instance of SqlBuilder.
+
 
 ---
 

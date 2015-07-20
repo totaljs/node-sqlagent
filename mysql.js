@@ -26,6 +26,21 @@ SqlBuilder.prototype = {
 	}
 };
 
+SqlBuilder.prototype.replace = function(builder) {
+	var self = this;
+	self.builder = builder.builder;
+	self._order = builder._order;
+	self._skip = builder._skip;
+	self._take = builder._take;
+	self._set = builder._set;
+	self._fn = builder._fn;
+	self._join = builder._join;
+	self._fields = builder._fields;
+	self._schema = builder._schema;
+	self.hasOperator = builder.hasOperator;
+	return self;
+};
+
 SqlBuilder.prototype.join = function(name, on, type) {
 	var self = this;
 	if (!self._join)
@@ -1422,3 +1437,4 @@ Agent.init = function(conn, debug) {
 };
 
 module.exports = Agent;
+global.SqlBuilder = SqlBuilder;
