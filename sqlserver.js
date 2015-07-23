@@ -853,7 +853,7 @@ Agent.prototype._update = function(item) {
 };
 
 Agent.prototype._select = function(item) {
-	return { name: item.name, query: item.condition.toQuery(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1 };
+	return { name: item.name, query: item.condition.toQuery(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1, datatype: item.datatype };
 };
 
 Agent.prototype._delete = function(item) {
@@ -978,7 +978,7 @@ Agent.prototype.count = function(name, table, column) {
 		column = '*';
 
 	var condition = new SqlBuilder();
-	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
 	return condition;
 };
 
@@ -990,7 +990,7 @@ Agent.prototype.max = function(name, table, column) {
 	}
 
 	var condition = new SqlBuilder();
-	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
 	return condition;
 };
 
@@ -1002,7 +1002,7 @@ Agent.prototype.min = function(name, table, column) {
 	}
 
 	var condition = new SqlBuilder();
-	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
 	return condition;
 };
 
@@ -1014,7 +1014,7 @@ Agent.prototype.avg = function(name, table, column) {
 	}
 
 	var condition = new SqlBuilder();
-	self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn' });
+	self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
 	return condition;
 };
 
@@ -1268,7 +1268,7 @@ Agent.prototype._prepare = function(callback) {
 
 				if (current.first && current.column) {
 					if (rows.length > 0)
-						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : rows[0][current.column];
+						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseFloat(rows[0][current.column] || 0) : rows[0][current.column];
 				}
 				else if (current.first)
 					self.results[current.name] = rows instanceof Array ? rows[0] : rows;

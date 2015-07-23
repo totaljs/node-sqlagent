@@ -1256,7 +1256,7 @@ Agent.prototype._prepare = function(callback) {
 
 				if (current.first && current.column) {
 					if (rows.length > 0)
-						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseInt(rows[0][current.column]) : rows[0][current.column];
+						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseFloat(rows[0][current.column] || 0) : rows[0][current.column];
 				} else if (current.first)
 					self.results[current.name] = rows instanceof Array ? rows[0] : rows;
 				else
