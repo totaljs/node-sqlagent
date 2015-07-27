@@ -1517,6 +1517,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
+				client.query('ROLLBACK');
 				done();
 				callback(err);
 				return;
@@ -1525,6 +1526,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 			man.openAndReadableStream(oid, buffersize || 16384, function(err, size, stream) {
 
 				if (err) {
+					client.query('ROLLBACK');
 					done();
 					callback(err);
 					return;
