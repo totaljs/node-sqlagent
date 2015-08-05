@@ -711,6 +711,18 @@ builder.inc('credits', '-1');
 
 ---
 
+```plain
+builder.rem(name)
+```
+removes an value for inserting or updating.
+
+```javascript
+builder.set('name', 'Peter');
+builder.rem('name');
+```
+
+---
+
 #### builder.sort()
 
 ```plain

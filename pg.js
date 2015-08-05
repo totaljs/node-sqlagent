@@ -76,6 +76,12 @@ SqlBuilder.prototype.set = function(name, value) {
 	return self;
 };
 
+SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
+	if (this._set)
+		delete this._set[name]
+	return this;
+};
+
 SqlBuilder.prototype.schema = function(name) {
 	this._schema = name;
 	return this;

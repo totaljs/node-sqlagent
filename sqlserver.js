@@ -63,6 +63,12 @@ SqlBuilder.prototype.schema = function(name) {
 	return this;
 };
 
+SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
+	if (this._set)
+		delete this._set[name]
+	return this;
+};
+
 SqlBuilder.prototype.prepare = function(query) {
 	if (this._skip === 0 && this._take > 0)
 		return query.replace(/select/i, 'SELECT TOP ' + this._take);
