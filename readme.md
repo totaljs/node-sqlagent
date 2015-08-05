@@ -711,6 +711,8 @@ builder.inc('credits', '-1');
 
 ---
 
+#### builder.rem()
+
 ```plain
 builder.rem(name)
 ```
