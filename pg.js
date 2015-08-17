@@ -1435,6 +1435,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
+				client.query('ROLLBACK');
 				done();
 				callback(err);
 				return;
@@ -1443,6 +1444,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 			man.createAndWritableStream(buffersize || 16384, function(err, oid, stream) {
 
 				if (err) {
+   					client.query('ROLLBACK');
 					done();
 					callback(err);
 					return;
@@ -1472,19 +1474,20 @@ Agent.prototype.writeBuffer = function(buffer, callback) {
 
 		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
 		var man = new LargeObjectManager(client);
-		var buffersize = buffer.length;
 
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
+				client.query('ROLLBACK');
 				done();
 				callback(err);
 				return;
 			}
 
-			man.createAndWritableStream(buffersize, function(err, oid, stream) {
+			man.createAndWritableStream(buffer.length, function(err, oid, stream) {
 
 				if (err) {
+					client.query('ROLLBACK');
 					done();
 					callback(err);
 					return;
