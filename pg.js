@@ -809,7 +809,7 @@ Agent.prototype._insert = function(item) {
 		if (key[0] === '$')
 			continue;
 
-		columns.push('"' + key + '"'));
+		columns.push('"' + key + '"');
 
 		if (value instanceof Array) {
 
