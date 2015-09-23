@@ -373,7 +373,7 @@ SqlBuilder.column = function(name, schema) {
 
 	if (name[0] === '!') {
 		raw = true;
-		name = name.replace(/^\!{1,}/, '');
+		name = name.replace(/^(\!{1,}|\s)*/, '');
 	}
 
 	var index = name.lastIndexOf('-->');
