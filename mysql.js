@@ -328,6 +328,36 @@ SqlBuilder.column = function(name, schema) {
 	if (val)
 		return val;
 
+	var raw = false;
+
+	if (name[0] === '!') {
+		raw = true;
+		name = name.substring(1);
+	}
+
+	var index = name.lastIndexOf('-->');
+	var cast = '';
+	var casting = function(value) {
+		if (!cast)
+			return value;
+		return 'CAST(' + value + cast + ')';
+	};
+
+	if (index !== -1) {
+		cast = name.substring(index).replace('-->', '').trim();
+		name = name.substring(0, index).trim();
+		switch (cast) {
+			case 'integer':
+			case 'int':
+			case 'byte':
+			case 'smallint':
+			case 'number':
+				cast = 'UNSIGNED';
+				break;
+		}
+		cast = ' AS ' + cast;
+	}
+
 	var indexAS = name.toLowerCase().indexOf(' as');
 	var plus = '';
 
@@ -336,10 +366,14 @@ SqlBuilder.column = function(name, schema) {
 		name = name.substring(0, indexAS);
 	}
 
+	if (raw)
+		return columns_cache[cachekey] = casting(name) + plus;
+
+	name = name.replace(/\`]/g, '');
 	var index = name.indexOf('.');
 	if (index === -1)
-		return columns_cache[cachekey] = (schema ? schema + '.' : '') + '`' + name + '`' + plus;
-	return columns_cache[cachekey] = name.substring(0, index) + '.`' + name.substring(index + 1) + '`' + plus;
+		return columns_cache[cachekey] = casting((schema ? schema + '.' : '') + '`' + name + '`') + plus;
+	return columns_cache[cachekey] = casting(name.substring(0, index) + '.`' + name.substring(index + 1) + '`') + plus;
 };
 
 SqlBuilder.prototype.group = function(names) {
@@ -617,9 +651,14 @@ Agent.prototype.push = function(name, query, params) {
 	return is ? params : self;
 };
 
-Agent.prototype.validate = function(fn, error) {
+Agent.prototype.validate = function(fn, error, reverse) {
 	var self = this;
 	var type = typeof(fn);
+
+	if (typeof(error) === 'boolean') {
+		reverse = error;
+		error = undefined;
+	}
 
 	if (type === 'string' && error === undefined) {
 		// checks the last result
@@ -632,17 +671,33 @@ Agent.prototype.validate = function(fn, error) {
 		return self;
 	}
 
-	var exec = function(err, results, next) {
-		var id = fn === undefined || fn === null ? self.last : fn;
-		if (id === null || id === undefined)
-			return next(false);
-		var r = results[id];
-		if (r instanceof Array)
-			return next(r.length > 0);
-		if (r)
-			return next(true);
-		next(false);
-	};
+	var exec;
+
+	if (reverse) {
+		exec = function(err, results, next) {
+			var id = fn === undefined || fn === null ? self.last : fn;
+			if (id === null || id === undefined)
+				return next(false);
+			var r = results[id];
+			if (r instanceof Array)
+				return next(!r.length);
+			if (!r)
+				return next(true);
+			next(true);
+		};
+	} else {
+		exec = function(err, results, next) {
+			var id = fn === undefined || fn === null ? self.last : fn;
+			if (id === null || id === undefined)
+				return next(false);
+			var r = results[id];
+			if (r instanceof Array)
+				return next(r.length > 0);
+			if (r)
+				return next(true);
+			next(false);
+		};
+	}
 
 	self.command.push({ type: 'validate', fn: exec, error: error });
 	return self;

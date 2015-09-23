@@ -418,10 +418,12 @@ sql.exec();
 ---
 
 ```plain
-sql.validate([result_name_for_validation], error_message);
+sql.validate([result_name_for_validation], error_message, [reverse]);
 ```
 
-- `result_name_for_validation` (String) a result to compare, optional and default: __latest result- `error_message` (String / Error) - error message
+- `result_name_for_validation` (String) a result to compare.
+- `error_message` (String) an error message
+- `reverse` (Boolean) a reverse comparison (false: result must exist (default), true: result must be empty)
 __
 
 If the function throw error then SqlAgent cancel all pending queris (perform Rollback if the agent is in transaction mode) and executes callback with error.
@@ -957,6 +959,20 @@ builder.schema('b');
 builder.fields('name', 'age'); // --> b."name", b."age"
 builder.schema('a');
 builder.fields('name', 'age'); // --> a."name", a."age"
+builder.fields('!COUNT(id) as count') // --> a.COUNT()
+```
+
+#### builder.fields()
+
+```plain
+builder.fields()
+```
+sets fields for data selecting.
+
+```javascript
+builder.fields('name', 'age'); // "name", "age"
+builder.fields('!COUNT(id)'); // Raw field: COUNT(id)
+builder.fields('!COUNT(id) --> number'); // Raw field with casting: COUNT(id)::int (in PG), CAST(COUNT(id) as INT) (in SQL SERVER), etc.
 ```
 
 #### builder.replace()
