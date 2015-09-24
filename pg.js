@@ -16,6 +16,7 @@ function SqlBuilder(skip, take) {
 	this._fields;
 	this._schema;
 	this.hasOperator = false;
+	this._primary;
 }
 
 SqlBuilder.prototype = {
@@ -35,8 +36,14 @@ SqlBuilder.prototype.replace = function(builder) {
 	self._join = builder._join;
 	self._fields = builder._fields;
 	self._schema = builder._schema;
+	self._primary = builder._primary;
 	self.hasOperator = builder.hasOperator;
 	return self;
+};
+
+SqlBuilder.prototype.clone = function() {
+	var builder = new SqlBuilder();
+	return builder.replace(this);
 };
 
 SqlBuilder.prototype.join = function(name, on, type) {
@@ -74,6 +81,11 @@ SqlBuilder.prototype.set = function(name, value) {
 	}
 
 	return self;
+};
+
+SqlBuilder.prototype.primary = SqlBuilder.prototype.primaryKey = function(name) {
+	this._primary = name;
+	return this;
 };
 
 SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
@@ -784,9 +796,13 @@ Agent.prototype._insert = function(item) {
 	var name = item.name;
 	var values = item.values;
 	var table = item.table;
+	var primary = self.$primary;
 
-	if (values instanceof SqlBuilder)
+	if (values instanceof SqlBuilder) {
+		if (values._primary)
+			primary = values._primary;
 		values = values._set;
+	}
 
 	var keys = Object.keys(values);
 
@@ -834,7 +850,7 @@ Agent.prototype._insert = function(item) {
 		}
 	}
 
-	return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + self.$primary + ' as identity', params: params, first: true };
+	return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + primary + ' as identity', params: params, first: true };
 };
 
 Agent.prototype._update = function(item) {
@@ -910,7 +926,7 @@ Agent.prototype._update = function(item) {
 		}
 	}
 
-	return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id), params: params, first: true };
+	return { type: item.type, name: name, query: 'WITH rows AS (UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id) + ' RETURNING 1) SELECT count(*)::int as "count" FROM rows', params: params, first: true, column: 'count' };
 };
 
 Agent.prototype._select = function(item) {
@@ -918,7 +934,7 @@ Agent.prototype._select = function(item) {
 };
 
 Agent.prototype._delete = function(item) {
-	return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: true };
+	return { name: item.name, query: 'WITH rows AS (' + item.query + item.condition.toString(this.id) + ' RETURNING 1) SELECT count(*)::int as "count" FROM rows', params: null, first: true, column: 'count' };
 };
 
 Agent.prototype.save = function(name, table, insert, maker) {

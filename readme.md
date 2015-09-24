@@ -167,8 +167,8 @@ update2.set('name', 'Peter');
 update2.set('age', 30);
 
 sql.exec(function(err, response) {
-    console.log(response.user1);
-    console.log(response.user2);
+    console.log(response.user1); // returns {Number} (count of changed rows)
+    console.log(response.user2); // returns {Number} (count of changed rows)
 });
 ```
 
@@ -188,7 +188,7 @@ var remove = sql.remove('user', 'tbl_user');
 remove.where('id', 1);
 
 sql.exec(function(err, response) {
-    console.log(response.user);
+    console.log(response.user); // returns {Number} (count of deleted rows)
 });
 ```
 

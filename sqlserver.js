@@ -18,6 +18,7 @@ function SqlBuilder(skip, take) {
 	this._join;
 	this._fields;
 	this._schema;
+	this._primary;
 	this.hasOperator = false;
 }
 
@@ -38,8 +39,14 @@ SqlBuilder.prototype.replace = function(builder) {
 	self._join = builder._join;
 	self._fields = builder._fields;
 	self._schema = builder._schema;
+	self._primary = builder._primary;
 	self.hasOperator = builder.hasOperator;
 	return self;
+};
+
+SqlBuilder.prototype.clone = function() {
+	var builder = new SqlBuilder();
+	return builder.replace(this);
 };
 
 SqlBuilder.prototype.join = function(name, on, type) {
@@ -944,7 +951,7 @@ Agent.prototype._update = function(item) {
 			params.push({ name: key, type: type, value: value === undefined ? null : value });
 	}
 
-	return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id) + '; SELECT @@rowcount As affectedRows', params: params, first: true };
+	return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id) + '; SELECT @@rowcount As affectedRows', params: params, first: true, column: 'affectedRows' };
 };
 
 Agent.prototype._select = function(item) {
@@ -952,7 +959,7 @@ Agent.prototype._select = function(item) {
 };
 
 Agent.prototype._delete = function(item) {
-	return { name: item.name, query: item.query + item.condition.toString(this.id) + '; SELECT @@rowcount As affectedRows', params: null, first: true };
+	return { name: item.name, query: item.query + item.condition.toString(this.id) + '; SELECT @@rowcount As affectedRows', params: null, first: true, column: 'affectedRows' };
 };
 
 Agent.prototype.save = function(name, table, insert, maker) {

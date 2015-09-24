@@ -17,6 +17,7 @@ function SqlBuilder(skip, take) {
 	this._join;
 	this._fields;
 	this._schema;
+	this._primary;
 	this.hasOperator = false;
 }
 
@@ -37,8 +38,14 @@ SqlBuilder.prototype.replace = function(builder) {
 	self._join = builder._join;
 	self._fields = builder._fields;
 	self._schema = builder._schema;
+	self._primary = builder._primary;
 	self.hasOperator = builder.hasOperator;
 	return self;
+};
+
+SqlBuilder.prototype.clone = function() {
+	var builder = new SqlBuilder();
+	return builder.replace(this);
 };
 
 SqlBuilder.prototype.join = function(name, on, type) {
@@ -76,6 +83,11 @@ SqlBuilder.prototype.set = function(name, value) {
 	}
 
 	return self;
+};
+
+SqlBuilder.prototype.primary = SqlBuilder.prototype.primaryKey = function(name) {
+	this._primary = name;
+	return this;
 };
 
 SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
@@ -859,7 +871,7 @@ Agent.prototype._update = function(item) {
 			params.push(value === undefined ? null : value);
 	}
 
-	return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id), params: params, first: true };
+	return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id), params: params, first: true, column: 'changedRows' };
 };
 
 Agent.prototype._select = function(item) {
