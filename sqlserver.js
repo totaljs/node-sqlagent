@@ -19,6 +19,7 @@ function SqlBuilder(skip, take) {
 	this._fields;
 	this._schema;
 	this._primary;
+	this._is = false;
 	this.hasOperator = false;
 }
 
@@ -40,6 +41,7 @@ SqlBuilder.prototype.replace = function(builder) {
 	self._fields = builder._fields;
 	self._schema = builder._schema;
 	self._primary = builder._primary;
+	self._is = builder._is;
 	self.hasOperator = builder.hasOperator;
 	return self;
 };
@@ -263,6 +265,7 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 
 	self.checkOperator();
 	self.builder.push(SqlBuilder.column(name, self._schema) + operator + (is ? value : SqlBuilder.escape(value)));
+	self._is = true;
 	return self;
 };
 
@@ -487,6 +490,7 @@ SqlBuilder.prototype.in = function(name, value) {
 	for (var i = 0, length = value.length; i < length; i++)
 		values.push(SqlBuilder.escape(value[i]));
 	self.builder.push(SqlBuilder.column(name, self._schema) + ' IN (' + values.join(',') + ')');
+	self._is = true;
 	return self;
 };
 
@@ -513,6 +517,7 @@ SqlBuilder.prototype.like = function(name, value, where) {
 	}
 
 	self.builder.push(SqlBuilder.column(name, self._schema) + ' LIKE ' + search);
+	self._is = true;
 	return self;
 };
 
@@ -520,6 +525,7 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	var self = this;
 	self.checkOperator();
 	self.builder.push(SqlBuilder.column(name, self._schema) + ' BETWEEN ' + SqlBuilder.escape(valueA) + ' AND ' + SqlBuilder.escape(valueB));
+	self._is = true;
 	return self;
 };
 
@@ -536,6 +542,7 @@ SqlBuilder.prototype.sql = function(sql) {
 	}
 
 	self.builder.push(sql);
+	self._is = true;
 	return self;
 };
 
@@ -579,7 +586,7 @@ SqlBuilder.prototype.toString = function(id) {
 		});
 	}
 
-	return (join ? ' ' + join : '') + ' WHERE ' + where + order + plus;
+	return (join ? ' ' + join : '') + (self._is ? ' WHERE ' : ' ') + where + order + plus;
 };
 
 SqlBuilder.prototype.make = function(fn) {
