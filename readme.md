@@ -962,6 +962,13 @@ builder.fields('name', 'age'); // --> a."name", a."age"
 builder.fields('!COUNT(id) as count') // --> a.COUNT()
 ```
 
+#### builder.escape()
+
+```plain
+builder.escape(string)
+```
+escapes value as prevention for SQL injection
+
 #### builder.fields()
 
 ```plain
