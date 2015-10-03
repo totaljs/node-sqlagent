@@ -795,6 +795,19 @@ Agent.prototype._insert = function(item) {
 		if (key[0] === '$')
 			continue;
 
+		switch (key[0]) {
+			case '+':
+			case '-':
+			case '*':
+			case '/':
+				key = key.substring(1);
+				if (!value)
+					value = 1;
+				break;
+			default:
+				break;
+		}
+
 		columns.push('`' + key + '`');
 
 		if (isRAW) {
@@ -859,18 +872,26 @@ Agent.prototype._update = function(item) {
 			case '+':
 				key = key.substring(1);
 				columns.push('`' + key + '`=COALESCE(`' + key + '`,0)+?');
+				if (!value)
+					value = 1;
 				break;
 			case '-':
 				key = key.substring(1);
 				columns.push('`' + key + '`=COALESCE(`' + key + '`,0)-?');
+				if (!value)
+					value = 1;
 				break;
 			case '*':
 				key = key.substring(1);
 				columns.push('`' + key + '`=COALESCE(`' + key + '`,0)*?');
+				if (!value)
+					value = 1;
 				break;
 			case '/':
 				key = key.substring(1);
 				columns.push('`' + key + '`=COALESCE(`' + key + '`,0)/?');
+				if (!value)
+					value = 1;
 				break;
 			default:
 				if (isRAW)

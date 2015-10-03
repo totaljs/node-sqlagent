@@ -838,9 +838,9 @@ Agent.prototype._insert = function(item) {
 		if (key[0] === '$')
 			continue;
 
-		columns.push('"' + key + '"');
-
 		if (value instanceof Array) {
+
+			columns.push('"' + key + '"');
 
 			var helper = [];
 
@@ -852,6 +852,19 @@ Agent.prototype._insert = function(item) {
 			columns_values.push('(' + helper.join(',') + ')');
 
 		} else {
+
+			switch (key[0]) {
+				case '+':
+				case '-':
+				case '*':
+				case '/':
+					key = key.substring(1);
+					if (!value)
+						value = 1;
+					break;
+			}
+
+			columns.push('"' + key + '"');
 
 			if (isRAW) {
 				columns_values.push(value);
@@ -911,18 +924,34 @@ Agent.prototype._update = function(item) {
 
 			switch (key[0]) {
 				case '+':
+
+					if (!value)
+						value = 1;
+
 					key = key.substring(1);
 					columns.push('"' + key + '"=COALESCE("' + key + '",0)+$' + (index++));
 					break;
 				case '-':
+
+					if (!value)
+						value = 1;
+
 					key = key.substring(1);
 					columns.push('"' + key + '"=COALESCE("' + key + '",0)-$' + (index++));
 					break;
 				case '*':
+
+					if (!value)
+						value = 1;
+
 					key = key.substring(1);
 					columns.push('"' + key + '"=COALESCE("' + key + '",0)*$' + (index++));
 					break;
 				case '/':
+
+					if (!value)
+						value = 1;
+
 					key = key.substring(1);
 					columns.push('"' + key + '"=COALESCE("' + key + '",0)/$' + (index++));
 					break;
