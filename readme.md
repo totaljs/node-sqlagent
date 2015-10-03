@@ -351,6 +351,26 @@ sql.unlock();
 sql.exec();
 ```
 
+### Default values
+
+- you can set default values
+- values are binding immediately (not in order)
+
+```javascript
+sql.default(function(response) {
+    response.count = 0;
+    response.user = {};
+    response.user.id = 1;
+});
+
+// ...
+// ...
+
+sql.exec(function(err, response) {
+    console.log(response);
+});
+```
+
 ### Preparing (dependencies)
 
 - you can use multiple `sql.prepare()`

@@ -600,7 +600,7 @@ function Agent(options, error, id) {
 	this.time;
 	this.$transaction;
 	this.$fast = false;
-	this.results;
+	this.results = {};
 }
 
 Agent.prototype = {
@@ -624,6 +624,11 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 
 // Debug mode (output to console)
 Agent.debug = false;
+
+Agent.prototype.default = function(fn) {
+	fn.call(this.results, this.results);
+	return this;
+};
 
 Agent.query = function(name, query) {
 	queries[name] = query;
@@ -1229,7 +1234,6 @@ Agent.prototype._prepare = function(callback) {
 
 	var self = this;
 
-	self.results = {};
 	self.isRollback = false;
 	self.isTransaction = false;
 
