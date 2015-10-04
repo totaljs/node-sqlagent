@@ -18,6 +18,8 @@ function SqlBuilder(skip, take) {
 	this._fields;
 	this._schema;
 	this._primary;
+	this._group;
+	this._having;
 	this._is = false;
 	this.hasOperator = false;
 }
@@ -30,19 +32,50 @@ SqlBuilder.prototype = {
 
 SqlBuilder.prototype.replace = function(builder) {
 	var self = this;
-	self.builder = builder.builder;
-	self._order = builder._order;
+
+	self.builder = builder.builder.slice(0);
+
+	if (builder._order)
+		self._order = builder._order.slice(0);
+
 	self._skip = builder._skip;
 	self._take = builder._take;
-	self._set = builder._set;
-	self._fn = builder._fn;
-	self._join = builder._join;
-	self._fields = builder._fields;
-	self._schema = builder._schema;
-	self._primary = builder._primary;
-	this._is = builder._is;
+
+	if (builder._set)
+		self._set = copy(builder._set);
+
+	if (builder._fn)
+		self._fn = copy(builder._fn);
+
+	if (builder._join)
+		self._join = builder._join.slice(0);
+
+	if (builder._fields)
+		self._fields = builder._fields;
+
+	if (builder._schema)
+		self._schema = builder._schema;
+
+	if (builder._primary)
+		self._primary = builder._primary;
+
+	self._is = builder._is;
 	self.hasOperator = builder.hasOperator;
 	return self;
+};
+
+function copy(source) {
+
+	var keys = Object.keys(source);
+	var i = keys.length;
+	var target = {};
+
+	while (i--) {
+		var key = keys[i];
+		target[key] = source[key];
+	}
+
+	return target;
 };
 
 SqlBuilder.prototype.clone = function() {
@@ -394,13 +427,23 @@ SqlBuilder.column = function(name, schema) {
 
 SqlBuilder.prototype.group = function(names) {
 	var self = this;
-	self.builder.push('GROUP BY ' + (names instanceof Array ? names.join(',') : SqlBuilder.column(names, self._schema)));
+
+	if (names)
+		self._group = 'GROUP BY ' + (names instanceof Array ? names.join(',') : SqlBuilder.column(names, self._schema));
+	else
+		delete self._group;
+
 	return self;
 };
 
 SqlBuilder.prototype.having = function(condition) {
 	var self = this;
-	self.builder.push('HAVING ' + condition);
+
+	if (condition)
+		self._having = 'HAVING ' + condition;
+	else
+		delete self._having;
+
 	return self;
 };
 
@@ -536,7 +579,7 @@ SqlBuilder.prototype.toString = function(id) {
 		});
 	}
 
-	return (join ? ' ' + join : '') + (self._is ? ' WHERE ' : ' ') + where + order + plus;
+	return (join ? ' ' + join : '') + (self._is ? ' WHERE ' : ' ') + where + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
 };
 
 SqlBuilder.prototype.make = function(fn) {
