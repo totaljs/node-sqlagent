@@ -354,7 +354,7 @@ sql.exec();
 ### Default values
 
 - you can set default values
-- values are binding immediately (not in order)
+- values are bonded immediately (not in order)
 
 ```javascript
 sql.default(function(response) {
@@ -366,6 +366,32 @@ sql.default(function(response) {
 // ...
 // ...
 
+sql.exec(function(err, response) {
+    console.log(response);
+});
+```
+
+### Modify results
+
+- values are bonded in an order
+
+```javascript
+sql.select(...);
+sql.insert(...);
+
+sql.modify(function(response) {
+    response.user = {};
+    response.user.identity = 10;
+});
+
+// ...
+// ...
+
+// Calling:
+// 1. select
+// 2. insert
+// 3. modify
+// 4. other commands
 sql.exec(function(err, response) {
     console.log(response);
 });

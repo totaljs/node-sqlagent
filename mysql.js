@@ -671,6 +671,12 @@ Agent.prototype.prepare = function(fn) {
 	return self;
 };
 
+Agent.prototype.modify = function(fn) {
+	var self = this;
+	self.command.push({ type: 'modify', fn: fn });
+	return self;
+};
+
 Agent.prototype.bookmark = function(fn) {
 	var self = this;
 	self.command.push({ type: 'bookmark', fn: fn });
@@ -1282,6 +1288,16 @@ Agent.prototype._prepare = function(callback) {
 			} catch (e) {
 				self.rollback('bookmark', e, next);
 			}
+		}
+
+		if (item.type === 'modify') {
+			try {
+				item.fn(self.results);
+				next();
+			} catch (e) {
+				self.rollback('modify', e, next);
+			}
+			return;
 		}
 
 		if (item.type === 'prepare') {
