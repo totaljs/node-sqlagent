@@ -1250,6 +1250,28 @@ Agent.prototype.remove = function(name, table) {
 	return this.delete(name, table);
 };
 
+Agent.prototype.ifnot = function(name, fn) {
+	var self = this;
+	self.prepare(function(error, response, resume) {
+		if (response[name])
+			return resume();
+		fn.call(self, error, response);
+		resume();
+	});
+	return self;
+};
+
+Agent.prototype.ifexists = function(name, fn) {
+	var self = this;
+	self.prepare(function(error, response, resume) {
+		if (!response[name])
+			return resume();
+		fn.call(self, error, response);
+		resume();
+	});
+	return self;
+};
+
 Agent.prototype.destroy = function(name) {
 	var self = this;
 	for (var i = 0, length = self.command.length; i < length; i++) {
@@ -1272,6 +1294,10 @@ Agent.prototype.close = function() {
 
 Agent.prototype.rollback = function(where, e, next) {
 	var self = this;
+
+	if (self.errors)
+		self.errors.push(e);
+
 	self.command.length = 0;
 	if (!self.isTransaction)
 		return next();

@@ -351,6 +351,20 @@ sql.unlock();
 sql.exec();
 ```
 
+### If not or If exists
+
+```javascript
+instance.ifnot('user', function(instance, response) {
+    // It will be executed when the results won't be contain `user` property
+    // Is executed in order
+});
+
+instance.ifexists('user', function(instance, response) {
+    // It will be executed when the results will contain `user` property
+    // Is executed in order
+});
+```
+
 ### Default values
 
 - you can set default values
