@@ -826,8 +826,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 			var r = results[id];
 			if (r instanceof Array)
 				return next(r.length === 0);
-			if (!r)
-				return next(true);
+			if (r)
+				return next(false);
 			next(true);
 		};
 	} else {
