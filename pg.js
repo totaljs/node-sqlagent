@@ -799,10 +799,10 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		exec = function(err, results, next) {
 			var id = fn === undefined || fn === null ? self.last : fn;
 			if (id === null || id === undefined)
-				return next(false);
+				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
-				return next(!r.length);
+				return next(r.length === 0);
 			if (!r)
 				return next(true);
 			next(true);

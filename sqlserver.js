@@ -825,7 +825,7 @@ Agent.prototype.validate = function(fn, error, reverse) {
 				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
-				return next(!r.length);
+				return next(r.length === 0);
 			if (!r)
 				return next(true);
 			next(true);
