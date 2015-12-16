@@ -677,6 +677,17 @@ function *some_action() {
 }
 ```
 
+### Priority
+
+Set a command priority, so the command will be processed next round.
+
+```javascript
+sql.select('... processed as second')
+sql.select('... processed as first');
+sql.priority(); // --> takes last item in queue and inserts it as first (sorts it immediately).
+```
+
+
 ### Debug mode
 
 Debug mode writes each query to console.
