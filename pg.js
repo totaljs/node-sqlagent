@@ -1650,6 +1650,7 @@ Agent.destroy = function() {
 
 Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 	var self = this;
+	var isFN = typeof(filestream) === 'function';
 
 	if (typeof(buffersize) === 'function') {
 		var tmp = callback;
@@ -1690,7 +1691,10 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 					callback(null, oid);
 				});
 
-				filestream.pipe(stream);
+				if (isFN)
+					filestream(stream);
+				else
+					filestream.pipe(stream);
 			});
 		});
 	});
