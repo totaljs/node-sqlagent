@@ -637,6 +637,9 @@ function Agent(options, error) {
 	this.time;
 	this.$primary = 'id';
 	this.results = {};
+
+	// Hidden:
+	// this.$when;
 }
 
 Agent.prototype = {
@@ -660,6 +663,19 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 
 // Debug mode (output to console)
 Agent.debug = false;
+
+Agent.prototype.when = function(name, fn) {
+
+	if (!this.$when)
+		this.$when = {};
+
+	if (!this.$when[name])
+		this.$when[name] = [fn];
+	else
+		this.$when[name].push(fn);
+
+	return this;
+};
 
 Agent.prototype.priority = function() {
 	var self = this;
@@ -1501,7 +1517,16 @@ Agent.prototype._prepare = function(callback) {
 					self.results[current.name] = rows instanceof Array ? rows[0] : rows;
 				else
 					self.results[current.name] = rows;
+
 				self.emit('data', current.name, self.results);
+
+				if (!self.$when)
+					return;
+				var item = self.$when[current.name];
+				if (!item)
+					return;
+				for (var i = 0, length = item.length; i < length; i++)
+					item[i](self.errors, self.results);
 			}
 			self.last = item.name;
 			next();

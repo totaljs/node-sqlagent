@@ -603,6 +603,24 @@ sql.exec(function(err, response) {
 });
 ```
 
+### Waiting for specified values
+
+- `+3.1.0`
+
+```javascript
+sql.when('users', function(error, response) {
+    console.log(response.users);
+});
+
+sql.when('orders', function(error, response) {
+    console.log(response.orders);
+});
+
+sql.select('users', 'tbl_users');
+sql.select('orders', 'tbl_orders');
+sql.exec();
+```
+
 ## Bonus
 
 ### How to get latest inserted ID?
