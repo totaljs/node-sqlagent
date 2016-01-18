@@ -1497,7 +1497,7 @@ Agent.prototype._prepare = function(callback) {
 
 		var query = function(err, rows) {
 			if (err) {
-				self.errors.push(err.message);
+				self.errors.push(current.name + ': ' + err.message);
 				if (self.isTransaction)
 					self.isRollback = true;
 			} else {
@@ -1517,13 +1517,13 @@ Agent.prototype._prepare = function(callback) {
 				else
 					self.results[current.name] = rows;
 				self.emit('data', current.name, self.results);
-				if (!self.$when)
-					return;
-				var item = self.$when[current.name];
-				if (!item)
-					return;
-				for (var i = 0, length = item.length; i < length; i++)
-					item[i](self.errors, self.results);
+				if (self.$when) {
+					var tmp = self.$when[current.name];
+					if (tmp) {
+						for (var i = 0, length = tmp.length; i < length; i++)
+							tmp[i](self.errors, self.results);
+					}
+				}
 			}
 			self.last = item.name;
 			next();
