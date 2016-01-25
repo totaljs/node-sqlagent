@@ -192,7 +192,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 				return self;
 		}
 
-		if (value === 0)
+		if (!value)
 			return self;
 
 		name = type + name;
@@ -213,7 +213,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 				continue;
 		}
 
-		if (val === 0)
+		if (!val)
 			continue;
 
 		key = type + key;
@@ -467,7 +467,7 @@ SqlBuilder.prototype.having = function(condition) {
 
 SqlBuilder.prototype.and = function() {
 	var self = this;
-	if (self.builder.length === 0)
+	if (!self.builder.length)
 		return self;
 	self.hasOperator = true;
 	self.builder.push('AND');
@@ -476,7 +476,7 @@ SqlBuilder.prototype.and = function() {
 
 SqlBuilder.prototype.or = function() {
 	var self = this;
-	if (self.builder.length === 0)
+	if (!self.builder.length)
 		return self;
 	self.hasOperator = true;
 	self.builder.push('OR');
@@ -579,14 +579,14 @@ SqlBuilder.prototype.toString = function(id) {
 	if (self._order)
 		order = ' ORDER BY ' + self._order.join(',');
 
-	if (self._skip > 0 && self._take > 0)
+	if (self._skip && self._take)
 		plus = ' LIMIT ' + self._take + ' OFFSET ' + self._skip;
-	else if (self._take > 0)
+	else if (self._take)
 		plus = ' LIMIT ' + self._take;
-	else if (self._skip > 0)
+	else if (self._skip)
 		plus = ' OFFSET ' + self._skip;
 
-	if (self.builder.length === 0)
+	if (!self.builder.length)
 		return (join ? join + ' ' : '') + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
 
 	var where = self.builder.join(' ');
@@ -1442,7 +1442,7 @@ Agent.prototype._prepare = function(callback) {
 			return;
 		}
 
-		if (self.skipCount > 0) {
+		if (self.skipCount) {
 			self.skipCount--;
 			next();
 			return;
@@ -1495,7 +1495,7 @@ Agent.prototype._prepare = function(callback) {
 
 				if (current.type === 'insert') {
 
-					if (rows.length > 0) {
+					if (rows.length) {
 						var tmp = parseInt(rows[0].identity);
 						if (isNaN(tmp)) {
 							self.id = rows[0].identity;
@@ -1511,7 +1511,7 @@ Agent.prototype._prepare = function(callback) {
 				}
 
 				if (current.first && current.column) {
-					if (rows.length > 0)
+					if (rows.length)
 						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseFloat(rows[0][current.column] || 0) : rows[0][current.column];
 				} else if (current.first)
 					self.results[current.name] = rows instanceof Array ? rows[0] : rows;
@@ -1610,7 +1610,7 @@ Agent.prototype._prepare = function(callback) {
 		if (self.isErrorBuilder) {
 			if (self.errors.hasError())
 				err = self.errors;
-		} else if (self.errors.length > 0)
+		} else if (self.errors.length)
 			err = self.errors;
 
 		if (Agent.debug)
@@ -1639,7 +1639,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	else
 		delete self.returnIndex;
 
-	if (self.command.length === 0) {
+	if (!self.command.length) {
 		if (callback)
 			callback.call(self, null, {});
 		return self;
@@ -1651,7 +1651,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
-			callback.call(self, err, null);
+			callback.call(self, err, {});
 			return;
 		}
 
