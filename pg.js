@@ -230,20 +230,28 @@ SqlBuilder.prototype.sort = function(name, desc) {
 SqlBuilder.prototype.order = function(name, desc) {
 
 	var self = this;
-	if (self._order === null)
+	if (!self._order)
 		self._order = [];
+
+	var key = '<' + name + '.' + self._schema + '>';
+	if (columns_cache[key]) {
+		self._order.push(columns_cache[key]);
+		return self;
+	}
 
 	var lowered = name.toLowerCase();
 
 	if (lowered.lastIndexOf('desc') !== -1 || lowered.lastIndexOf('asc') !== -1) {
-		self._order.push(SqlBuilder.column(name, self._schema));
+		columns_cache[key] = SqlBuilder.column(name, self._schema);
+		self._order.push(columns_cache[key]);
 		return self;
 	} else if (typeof(desc) === 'boolean')
 		desc = desc === true ? 'DESC' : 'ASC';
 	else
 		desc = 'ASC';
 
-	self._order.push(SqlBuilder.column(name, self._schema) + ' ' + desc);
+	columns_cache[key] = SqlBuilder.column(name, self._schema) + ' ' + desc;
+	self._order.push(columns_cache[key]);
 	return self;
 };
 
