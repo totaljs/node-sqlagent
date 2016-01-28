@@ -628,25 +628,14 @@ SqlBuilder.prototype.make = function(fn) {
 };
 
 function Agent(options, error) {
+
 	this.options = options;
-	this.command = [];
-	this.db = null;
-	this.done = null;
-	this.last = null;
-	this.id = null;
-	this.$id = null;
-	this.isCanceled = false;
-	this.index = 0;
-	this.isPut = false;
-	this.skipCount = 0;
-	this.skips = {};
 	this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
 	this.errors = this.isErrorBuilder ? error : null;
-	this.time;
-	this.$primary = 'id';
-	this.results = {};
+	this.clear();
 
 	// Hidden:
+	// this.time
 	// this.$when;
 }
 
@@ -671,6 +660,32 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 
 // Debug mode (output to console)
 Agent.debug = false;
+
+Agent.prototype.clear = function() {
+	this.command = [];
+	this.db = null;
+	this.done = null;
+	this.last = null;
+	this.id = null;
+	this.$id = null;
+	this.isCanceled = false;
+	this.index = 0;
+	this.isPut = false;
+	this.skipCount = 0;
+	this.skips = {};
+	this.$primary = 'id';
+	this.results = {};
+
+	if (this.$when)
+		delete this.$when;
+
+	if (this.errors && this.isErrorBuilder)
+		this.errors.clear();
+	else if (this.errors)
+		this.errors = null;
+
+	return this;
+};
 
 Agent.prototype.when = function(name, fn) {
 
