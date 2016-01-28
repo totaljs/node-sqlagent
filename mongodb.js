@@ -640,9 +640,7 @@ Agent.prototype.skip = function(name) {
 
 Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
 	var self = this;
-	if (!name)
-		name = 'id';
-	self.command.push({ type: 'primary', name: name });
+	console.log('Agent.primary() is not supported.');
 	return self;
 };
 
@@ -1545,7 +1543,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	var self = this;
 
 	if (Agent.debug) {
-		self.debugname = 'sqlagent/pg (' + Math.floor(Math.random() * 1000) + ')';
+		self.debugname = 'sqlagent/mongodb (' + Math.floor(Math.random() * 1000) + ')';
 		self.debugtime = Date.now();
 	}
 
@@ -1590,174 +1588,13 @@ Agent.destroy = function() {
 };
 
 Agent.prototype.writeStream = function(filestream, buffersize, callback) {
-	var self = this;
-	var isFN = typeof(filestream) === 'function';
-
-	if (typeof(buffersize) === 'function') {
-		var tmp = callback;
-		callback = buffersize;
-		buffersize = tmp;
-	}
-
-	database.connect(self.options, function(err, client, done) {
-
-		if (err) {
-			callback(err);
-			return;
-		}
-
-		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
-		var man = new LargeObjectManager(client);
-		client.query('BEGIN', function(err, result) {
-
-			if (err) {
-				client.query('ROLLBACK');
-				done();
-				callback(err);
-				return;
-			}
-
-			man.createAndWritableStream(buffersize || 16384, function(err, oid, stream) {
-
-				if (err) {
-   					client.query('ROLLBACK');
-					done();
-					callback(err);
-					return;
-				}
-
-				stream.on('finish', function() {
-					client.query('COMMIT');
-					done();
-					callback(null, oid);
-				});
-
-				if (isFN)
-					filestream(stream);
-				else
-					filestream.pipe(stream);
-			});
-		});
-	});
 };
 
 Agent.prototype.writeBuffer = function(buffer, callback) {
-	var self = this;
-
-	database.connect(self.options, function(err, client, done) {
-
-		if (err) {
-			callback(err);
-			return;
-		}
-
-		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
-		var man = new LargeObjectManager(client);
-
-		client.query('BEGIN', function(err, result) {
-
-			if (err) {
-				client.query('ROLLBACK');
-				done();
-				callback(err);
-				return;
-			}
-
-			man.createAndWritableStream(buffer.length, function(err, oid, stream) {
-
-				if (err) {
-					client.query('ROLLBACK');
-					done();
-					callback(err);
-					return;
-				}
-
-				stream.on('finish', function() {
-					client.query('COMMIT');
-					done();
-					callback(null, oid);
-				});
-
-				stream.end(buffer);
-			});
-		});
-	});
 };
 
 Agent.prototype.readStream = function(oid, buffersize, callback) {
-	var self = this;
-
-	if (typeof(buffersize) === 'function') {
-		var tmp = callback;
-		callback = buffersize;
-		buffersize = tmp;
-	}
-
-	database.connect(self.options, function(err, client, done) {
-
-		if (err) {
-			callback(err);
-			return;
-		}
-
-		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
-		var man = new LargeObjectManager(client);
-		client.query('BEGIN', function(err, result) {
-
-			if (err) {
-				client.query('ROLLBACK');
-				done();
-				callback(err);
-				return;
-			}
-
-			man.openAndReadableStream(oid, buffersize || 16384, function(err, size, stream) {
-
-				if (err) {
-					client.query('ROLLBACK');
-					done();
-					callback(err);
-					return;
-				}
-
-				stream.on('end', function() {
-					client.query('COMMIT');
-					done();
-				});
-
-				callback(null, stream, size);
-			});
-		});
-	});
 };
-
-// Author: https://github.com/segmentio/pg-escape
-// License: MIT
-function pg_escape(val){
-	if (val === null)
-		return 'NULL';
-	var backslash = ~val.indexOf('\\');
-	var prefix = backslash ? 'E' : '';
-	val = val.replace(/'/g, "''").replace(/\\/g, '\\\\');
-	return prefix + "'" + val + "'";
-};
-
-function dateToString(dt) {
-	var arr = [];
-	arr.push(dt.getFullYear().toString());
-	arr.push((dt.getMonth() + 1).toString());
-	arr.push(dt.getDate().toString());
-	arr.push(dt.getHours().toString());
-	arr.push(dt.getMinutes().toString());
-	arr.push(dt.getSeconds().toString());
-
-	for (var i = 1, length = arr.length; i < length; i++) {
-		if (arr[i].length === 1)
-			arr[i] = '0' + arr[i];
-	}
-
-	return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
-}
 
 function prepare_params(params) {
 	if (!params)
