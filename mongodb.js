@@ -783,6 +783,7 @@ Agent.prototype.push = function(name, table, fn) {
 	var self = this;
 
 	if (typeof(table) !== 'string') {
+		fn = table;
 		table = name;
 		name = self.index++;
 	}
@@ -1258,6 +1259,7 @@ Agent.prototype._prepare = function(callback) {
 
 				self.results[item.name] = response;
 				self.emit('data', item.name, response);
+				next();
 			});
 			return;
 		}
