@@ -1,6 +1,8 @@
 var database = require('mongodb');
 var Events = require('events');
 var columns_cache = {};
+var NOOP = function(){};
+var DB;
 
 require('./index');
 
@@ -12,25 +14,24 @@ function SqlBuilder(skip, take, agent) {
 	this._take = take >= 0 ? take : 0;
 	this._set = null;
 	this._inc = null;
-	this._fn;
-	this._fnpath;
 	this._scope = 0;
-	this._join;
 	this._fields;
 	this._schema;
 	this._group;
 	this._having;
 	this._primary;
 	this._is = false;
+	this._isfirst = false;
+	this._prepare;
 }
 
 SqlBuilder.prototype = {
 	get data() {
 		var obj = {};
 		if (this._set)
-			obj.set = this._set;
+			obj.$set = this._set;
 		if (this._inc)
-			obj.inc = this._inc;
+			obj.$inc = this._inc;
 		return obj;
 	}
 };
@@ -52,17 +53,11 @@ SqlBuilder.prototype.replace = function(builder) {
 	if (builder._inc)
 		self._inc = copy(builder._inc);
 
-	if (builder._fn)
-		self._fn = copy(builder._fn);
-
-	if (builder._fnpath)
-		self._fnpath = copy(builder._fnpath);
+	if (builder._prepare)
+		self._prepare = copy(builder._prepare);
 
 	if (builder._fields)
 		self._fields = copy(builder._fields);
-
-	if (builder._schema)
-		self._schema = builder._schema;
 
 	self._is = builder._is;
 	return self;
@@ -130,7 +125,7 @@ SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
 };
 
 SqlBuilder.prototype.schema = function(name) {
-	this._schema = name;
+	console.log('SqlBuilder.schema(' + name + ') is not supported.');
 	return this;
 };
 
@@ -307,6 +302,7 @@ SqlBuilder.prototype.first = function() {
 	var self = this;
 	self._skip = 0;
 	self._take = 1;
+	self._isfirst = true;
 	return self;
 };
 
@@ -324,40 +320,31 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 		operator = '<>';
 
 	var is = false;
+	var type = typeof(value);
 
-	// I expect Agent.$$
-	if (typeof(value) === 'function') {
-
-		if (!self._fn) {
-			self._fn = {};
-			self._fnpath = [];
-		}
-
-		var key = Math.floor(Math.random() * 1000000);
-		self._fn[key] = value;
-		self._fnpath.push(name);
-		value = '#' + key + '#';
-		is = true;
+	if (name[0] === '!' && type !== 'function') {
+		name = name.substring(1);
+		value = ObjectID.parse(value);
 	}
 
 	switch (operator) {
 		case '=':
-			self.$scope(name, value);
+			self.$scope(name, value, type, 1);
 			break;
 		case '<>':
-			self.$scope(name, { $ne: value });
+			self.$scope(name, { $ne: value }, type, 5);
 			break;
 		case '>':
-			self.$scope(name, { $gt: value });
+			self.$scope(name, { $gt: value }, type, 6);
 			break;
 		case '<':
-			self.$scope(name, { $lt: value });
+			self.$scope(name, { $lt: value }, type, 7);
 			break;
 		case '>=':
-			self.$scope(name, { $gte: value });
+			self.$scope(name, { $gte: value }, type, 8);
 			break;
 		case '<=':
-			self.$scope(name, { $lte: value });
+			self.$scope(name, { $lte: value }, type, 9);
 			break;
 	}
 
@@ -378,8 +365,6 @@ SqlBuilder.prototype.clear = function() {
 	this._order = null;
 	this._set = null;
 	this._inc = null;
-	this._fnpath = null;
-	this._fn = null;
 	this.builder = {};
 	return this;
 };
@@ -446,8 +431,17 @@ SqlBuilder.prototype.scope = function(fn) {
 	return self;
 };
 
-SqlBuilder.prototype.$scope = function(name, obj) {
+SqlBuilder.prototype.$scope = function(name, obj, type, code, raw) {
+
 	var self = this;
+	var is = false;
+
+	if (type === 'function') {
+		if (!self._prepare)
+			self._prepare = [];
+		self._prepare.push({ context: self.builder, name: name, value: obj, scope: self._scope, type: code, raw: raw });
+		is = true;
+	}
 
 	if (self._scope === 0) {
 		self.builder[name] = obj;
@@ -460,6 +454,8 @@ SqlBuilder.prototype.$scope = function(name, obj) {
 		var filter = {};
 		filter[name] = obj;
 		self.builder['$or'].push(filter);
+		if (is)
+			self._prepare[self._prepare.length - 1].index = self.builder['$or'].length - 1;
 	}
 
 	if (self._scope === 2) {
@@ -468,6 +464,8 @@ SqlBuilder.prototype.$scope = function(name, obj) {
 		var filter = {};
 		filter[name] = obj;
 		self.builder['$and'].push(filter);
+		if (is)
+			self._prepare[self._prepare.length - 1].index = self.builder['$and'].length - 1;
 	}
 
 	return self;
@@ -475,30 +473,26 @@ SqlBuilder.prototype.$scope = function(name, obj) {
 
 SqlBuilder.prototype.in = function(name, value) {
 	var self = this;
-
-	if (!(value instanceof Array)) {
-		self.where(name, value);
-		return self;
-	}
-
-	self.$scope(name, { '$in': value });
+	self.$scope(name, { '$in': value }, typeof(value), 4);
 	return self;
 };
 
 SqlBuilder.prototype.like = function(name, value, where) {
 	var self = this;
+	var type = typeof(value);
+	var val = type === 'function' ? '' : value.toString();
 
 	switch (where) {
 		case 'beg':
 		case 'begin':
-			self.$scope(name, { $regex: '^' + value.toString() });
+			self.$scope(name, { $regex: '^' + val }, type, 2, value);
 			break;
 		case 'end':
-			self.$scope(name, { $regex: value.toString() + '$' });
+			self.$scope(name, { $regex: val + '$' }, type, 2, value);
 			break;
 		case '*':
 		default:
-			self.$scope(name, { $regex: value.toString() });
+			self.$scope(name, { $regex: val }, type, 2, value);
 			break;
 	}
 
@@ -509,7 +503,9 @@ SqlBuilder.prototype.like = function(name, value, where) {
 SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	var self = this;
 	var obj = {};
-	self.$scope(name, { $gte: valueA, $lt: valueB });
+	var typeA = typeof(valueA);
+	var typeB = typeof(valueB);
+	self.$scope(name, { $gte: valueA, $lte: valueB }, typeA === 'function' || typeB === 'function' ? 'function' : typeA, 3);
 	self._is = true;
 	return self;
 };
@@ -532,6 +528,83 @@ SqlBuilder.prototype.toString = function() {
 
 SqlBuilder.prototype.toQuery = function(query) {
 	console.log('SqlBuilder.toQuery() is not supported.');
+	return this;
+};
+
+SqlBuilder.prototype.prepare = function() {
+
+	if (!this._prepare)
+		return this;
+
+	for (var i = 0, length = this._prepare.length; i < length; i++) {
+
+		var prepare = this._prepare[i];
+		// prepare.type 1 - where "="
+		// prepare.type 2 - like
+		// prepare.type 3 - between
+		// prepare.type 4 - in
+
+		// or
+		if (prepare.scope === 1) {
+			prepare.context['$or'][prepare.index] = prepare.value();
+			continue;
+		}
+
+		// and
+		if (prepare.scope === 2) {
+			prepare.context['$and'][prepare.index] = prepare.value();
+			continue;
+		}
+
+		if (prepare.type === 1) {
+			prepare.context[prepare.name] = prepare.value();
+			continue;
+		}
+
+		if (prepare.type === 2) {
+			prepare.value.$regex += prepare.raw();
+			continue;
+		}
+
+		if (prepare.type === 3) {
+			if (typeof(prepare.value.$gte) === 'function')
+				prepare.value.$gte = prepare.value.$gte();
+			if (typeof(prepare.value.$lte) === 'function')
+				prepare.value.$lte = prepare.value.$lte();
+			continue;
+		}
+
+		if (prepare.type === 4) {
+			prepare.value.$in = prepare.value.$in();
+			continue;
+		}
+
+		if (prepare.type === 5) {
+			prepare.value.$ne = prepare.value.$ne();
+			continue;
+		}
+
+		if (prepare.type === 6) {
+			prepare.value.$gt = prepare.value.$gt();
+			continue;
+		}
+
+		if (prepare.type === 7) {
+			prepare.value.$lt = prepare.value.$lt();
+			continue;
+		}
+
+		if (prepare.type === 8) {
+			prepare.value.$gte = prepare.value.$gte();
+			continue;
+		}
+
+		if (prepare.type === 9) {
+			prepare.value.$lte = prepare.value.$lte();
+			continue;
+		}
+	}
+
 	return this;
 };
 
@@ -706,27 +779,16 @@ Agent.prototype.query = function(name, query, params) {
 	return this.push(name, query, params);
 };
 
-Agent.prototype.push = function(name, query, params) {
+Agent.prototype.push = function(name, table, fn) {
 	var self = this;
 
-	if (typeof(query) !== 'string') {
-		params = query;
-		query = name;
+	if (typeof(table) !== 'string') {
+		table = name;
 		name = self.index++;
 	}
 
-	var is = false;
-
-	if (!params) {
-		is = true;
-		params = new SqlBuilder(0, 0, self);
-	}
-
-	if (queries[query])
-		query = queries[query];
-
-	self.command.push({ name: name, query: query, params: params, first: isFIRST(query) });
-	return is ? params : self;
+	self.command.push({ type: 'push', name: name, table: table, fn: fn });
+	return self;
 };
 
 Agent.prototype.validate = function(fn, error, reverse) {
@@ -787,18 +849,19 @@ Agent.prototype.cancel = function(fn) {
 
 Agent.prototype.begin = function() {
 	var self = this;
-	self.command.push({ type: 'begin' });
+	console.log('Agent.begin() is not supported.');
 	return self;
 };
 
 Agent.prototype.end = function() {
 	var self = this;
-	self.command.push({ type: 'end' });
+	console.log('Agent.end() is not supported.');
 	return self;
 };
 
 Agent.prototype.commit = function() {
-	return this.end();
+	console.log('Agent.commit() is not supported.');
+	return this;
 };
 
 function prepareValue(value, type) {
@@ -818,182 +881,6 @@ function prepareValue(value, type) {
 	return value;
 }
 
-Agent.prototype._insert = function(item) {
-
-	var self = this;
-	var name = item.name;
-	var values = item.values;
-	var table = item.table;
-	var primary = self.$primary;
-
-	if (values instanceof SqlBuilder) {
-		if (values._primary)
-			primary = values._primary;
-		values = values._set;
-	}
-
-	var keys = Object.keys(values);
-
-	var columns = [];
-	var columns_values = [];
-	var params = [];
-	var index = 1;
-
-	for (var i = 0, length = keys.length; i < length; i++) {
-		var key = keys[i];
-		var value = values[key];
-
-		var isRAW = key[0] === '!';
-		if (isRAW)
-			key = key.substring(1);
-
-		if (item.without && item.without.indexOf(key) !== -1)
-			continue;
-
-		if (key[0] === '$')
-			continue;
-
-		if (value instanceof Array) {
-
-			columns.push('"' + key + '"');
-
-			var helper = [];
-
-			for (var j = 0, sublength = value.length; j < sublength; j++) {
-				helper.push('$' + index++);
-				params.push(prepareValue(value[j]));
-			}
-
-			columns_values.push('(' + helper.join(',') + ')');
-
-		} else {
-
-			switch (key[0]) {
-				case '+':
-				case '-':
-				case '*':
-				case '/':
-					key = key.substring(1);
-					if (!value)
-						value = 1;
-					break;
-			}
-
-			columns.push('"' + key + '"');
-
-			if (isRAW) {
-				columns_values.push(value);
-				continue;
-			}
-
-			columns_values.push('$' + index++);
-			params.push(prepareValue(value));
-		}
-	}
-
-	return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ') RETURNING ' + primary + ' as identity', params: params, first: true };
-};
-
-Agent.prototype._update = function(item) {
-
-	var name = item.name;
-	var values = item.values;
-
-	if (values instanceof SqlBuilder)
-		values = values._set;
-
-	var condition = item.condition;
-	var table = item.table;
-	var keys = Object.keys(values);
-
-	var columns = [];
-	var params = [];
-	var index = 1;
-
-	for (var i = 0, length = keys.length; i < length; i++) {
-		var key = keys[i];
-		var value = values[key];
-
-		var isRAW = key[0] === '!';
-		if (isRAW)
-			key = key.substring(1);
-
-		if (item.without && item.without.indexOf(key) !== -1)
-			continue;
-
-		if (key[0] === '$')
-			continue;
-
-		if (value instanceof Array) {
-
-			var helper = [];
-
-			for (var j = 0, sublength = value.length; j < sublength; j++) {
-				helper.push('$' + (index++));
-				params.push(prepareValue(value[j]));
-			}
-
-			columns.push('"' + key + '"=(' + helper.join(',') + ')');
-
-		} else {
-
-			switch (key[0]) {
-				case '+':
-
-					if (!value)
-						value = 1;
-
-					key = key.substring(1);
-					columns.push('"' + key + '"=COALESCE("' + key + '",0)+$' + (index++));
-					break;
-				case '-':
-
-					if (!value)
-						value = 1;
-
-					key = key.substring(1);
-					columns.push('"' + key + '"=COALESCE("' + key + '",0)-$' + (index++));
-					break;
-				case '*':
-
-					if (!value)
-						value = 1;
-
-					key = key.substring(1);
-					columns.push('"' + key + '"=COALESCE("' + key + '",0)*$' + (index++));
-					break;
-				case '/':
-
-					if (!value)
-						value = 1;
-
-					key = key.substring(1);
-					columns.push('"' + key + '"=COALESCE("' + key + '",0)/$' + (index++));
-					break;
-				default:
-					if (isRAW)
-						columns.push('"' + key + '"=' + value);
-					else
-						columns.push('"' + key + '"=$' + (index++));
-					break;
-			}
-
-			if (!isRAW)
-				params.push(prepareValue(value));
-		}
-	}
-
-	return { type: item.type, name: name, query: 'WITH rows AS (UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id) + ' RETURNING 1) SELECT count(*)::int as "count" FROM rows', params: params, first: true, column: 'count' };
-};
-
-Agent.prototype._select = function(item) {
-	return { name: item.name, query: item.condition.toQuery(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1, datatype: item.datatype };
-};
-
-Agent.prototype._delete = function(item) {
-	return { name: item.name, query: 'WITH rows AS (' + item.query + item.condition.toString(this.id) + ' RETURNING 1) SELECT count(*)::int as "count" FROM rows', params: null, first: true, column: 'count' };
-};
-
 Agent.prototype.save = function(name, table, insert, maker) {
 
 	if (typeof(table) === 'boolean') {
@@ -1012,68 +899,75 @@ Agent.prototype.save = function(name, table, insert, maker) {
 	return self;
 };
 
-Agent.prototype.insert = function(name, table, values, without) {
+Agent.prototype.insert = function(name, table) {
 
 	var self = this;
 
 	if (typeof(table) !== 'string') {
-		without = values;
-		values = table;
 		table = name;
 		name = self.index++;
 	}
 
-	if (values instanceof Array) {
-		var tmp = without;
-		without = values;
-		values = tmp;
-	}
+	var condition = new SqlBuilder(0, 0, self);
+	var fn = function(db, builder, helper, callback) {
+		builder.prepare();
 
-	var is = false;
-	if (!values) {
-		is = true;
-		values = new SqlBuilder(0, 0, self);
-	}
+		var data = builder.data;
 
-	self.command.push({ type: 'insert', table: table, name: name, values: values, without: without });
-	return is ? values : self;
+		if (data.$inc) {
+
+			if (data.$set)
+				data.$set = {};
+
+			Object.keys(data.$inc).forEach(function(key) {
+				data.$set[key] = data.$inc[key];
+			});
+
+			delete data.$inc;
+		}
+
+		db.insert(data, function(err, response) {
+			callback(err, response ? response.result.insertedCount > 0 : false);
+		});
+	};
+
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
 };
 
-Agent.prototype.select = function(name, table, schema, without, skip, take) {
-
+Agent.prototype.select = function(name, table) {
 	var self = this;
+
 	if (typeof(table) !== 'string') {
-		take = skip;
-		skip = without;
-		without = schema;
-		schema = table;
 		table = name;
 		name = self.index++;
 	}
 
-	if (!schema)
-		schema = '*';
+	var condition = new SqlBuilder(0, 0, self);
 
-	var condition = new SqlBuilder(skip, take, self);
-	var columns;
+	var fn = function(db, builder, helper, callback) {
 
-	if (schema instanceof Array) {
-		columns = schema;
-	} else if (typeof(schema) === 'string') {
-		columns = [schema];
-	} else {
-		columns = [];
-		var arr = Object.keys(schema);
-		for (var i = 0, length = arr.length; i < length; i++) {
-			if (without && without.indexOf(arr[i]) !== -1)
-				continue;
-			if (arr[i][0] === '$')
-				continue;
-			columns.push(SqlBuilder.column(arr[i]));
+		builder.prepare();
+		if (builder._isfirst) {
+			if (builder._fields)
+				db.findOne(builder.builder, builder._fields, callback);
+			else
+				db.findOne(builder.builder, callback);
+			return;
 		}
-	}
 
-	self.command.push({ type: 'select', query: 'SELECT ' + columns.join(',') + ' FROM ' + table, name: name, without: without, condition: condition });
+		var cursor = db.find(builder.builder);
+		if (builder._fields)
+			cursor.project(builder._fields);
+		if (builder._order)
+			cursor.sort(builder._order);
+		if (builder._take)
+			cursor.limit(builder._take);
+		if (builder._skip)
+			cursor.skip(builder._skip);
+		cursor.toArray(callback);
+	};
+
+	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
 	return condition;
 };
 
@@ -1095,8 +989,16 @@ Agent.prototype.exists = function(name, table) {
 	}
 
 	var condition = new SqlBuilder(0, 0, self);
-	condition.first();
-	self.command.push({ type: 'query', query: 'SELECT 1 as sqlagentcolumn_e FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn_e' });
+	condition.fields('_id');
+
+	var fn = function(db, builder, helper, callback) {
+		builder.prepare();
+		db.findOne(builder.builder, function(err, doc) {
+			callback(err, doc ? true : false);
+		});
+	};
+
+	self.command.push({ type: 'query', name: name, table: table, condition: condition });
 	return condition;
 };
 
@@ -1108,93 +1010,55 @@ Agent.prototype.count = function(name, table, column) {
 		name = self.index++;
 	}
 
-	if (!column)
-		column = '*';
+	var fn = function(db, builder, helper, callback) {
+		builder.prepare();
+		db.find(builder.builder).count(callback);
+	};
 
-	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: helper });
 	return condition;
 };
 
 Agent.prototype.max = function(name, table, column) {
-	var self = this;
-	if (typeof(table) !== 'string') {
-		table = name;
-		name = self.index++;
-	}
-
-	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
-	return condition;
+	throw new Error('Agent.max(' + name + ') is not supported now.');
 };
 
 Agent.prototype.min = function(name, table, column) {
-	var self = this;
-	if (typeof(table) !== 'string') {
-		table = name;
-		name = self.index++;
-	}
-
-	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
-	return condition;
+	throw new Error('Agent.min(' + name + ') is not supported now.');
 };
 
 Agent.prototype.avg = function(name, table, column) {
+	throw new Error('Agent.avg(' + name + ') is not supported now.');
+};
+
+Agent.prototype.updateOnly = function(name, table, values, only) {
+	throw new Error('Agent.updateOnly(' + name + ') is not supported now.');
+};
+
+Agent.prototype.update = function(name, table) {
+
 	var self = this;
+
 	if (typeof(table) !== 'string') {
 		table = name;
 		name = self.index++;
 	}
 
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
-	return condition;
-};
+	var fn = function(db, builder, helper, callback) {
+		builder.prepare();
+		if (builder._isfirst) {
+			db.updateOne(builder.builder, builder.data, function(err, response) {
+				callback(err, response ? response.result.nModified > 0 : false);
+			});
+		} else {
+			db.update(builder.builder, builder.data, { multi: true }, function(err, response) {
+				callback(err, response ? response.result.nModified > 0 : false);
+			});
+		}
+	};
 
-Agent.prototype.updateOnly = function(name, table, values, only) {
-
-	var model = {};
-
-	if (values instanceof SqlBuilder)
-		values = values._set;
-
-	for (var i = 0, length = only.length; i < length; i++) {
-		var key = only[i];
-		model[key] = values[i] === undefined ? null : values[i];
-	}
-
-	return this.update(name, table, model, null);
-};
-
-Agent.prototype.update = function(name, table, values, without) {
-
-	var self = this;
-
-	if (typeof(table) !== 'string') {
-		without = values;
-		values = table;
-		table = name;
-		name = self.index++;
-	}
-
-	if (values instanceof Array) {
-		var tmp = without;
-		without = values;
-		values = tmp;
-	}
-
-	var condition;
-
-	if (values instanceof SqlBuilder)
-		condition = values;
-	else
-		condition = new SqlBuilder(0, 0, self);
-
-	if (!values)
-		values = condition;
-
-	self.command.push({ type: 'update', table: table, name: name, values: values, without: without, condition: condition });
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
 	return condition;
 };
 
@@ -1208,7 +1072,20 @@ Agent.prototype.delete = function(name, table) {
 	}
 
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'delete', query: 'DELETE FROM ' + table, name: name, condition: condition });
+	var fn = function(db, builder, helper, callback) {
+		builder.prepare();
+		if (builder._isfirst) {
+			db.remove(builder.builder, { single: true }, function(err, response) {
+				callback(err, response ? response.result.nModified > 0 : false);
+			});
+		} else {
+			db.remove(builder.builder, function(err, response) {
+				callback(err, response ? response.result.nModified > 0 : false);
+			});
+		}
+	};
+
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
 	return condition;
 };
 
@@ -1368,149 +1245,53 @@ Agent.prototype._prepare = function(callback) {
 			}
 		}
 
-		var current;
+		if (item.type === 'push') {
+			item.fn(self.db.collection(item.table), function(err, response) {
 
-		switch (item.type) {
-			case 'update':
-				current = self._update(item);
-				break;
-			case 'insert':
-				current = self._insert(item);
-				break;
-			case 'select':
-				current = self._select(item);
-				break;
-			case 'delete':
-				current = self._delete(item);
-				break;
-			default:
-				current = item;
-				break;
-		}
+				self.last = item.name;
 
-		if (current.params instanceof SqlBuilder) {
-			current.query = current.query + current.params.toString(self.id);
-			current.params = undefined;
-		} else
-			current.params = prepare_params(current.params);
-
-		if (current.condition instanceof SqlBuilder)
-			current.query = current.query + current.condition.toString(self.id);
-
-		var query = function(err, result) {
-
-			if (err) {
-				self.errors.push(current.name + ': ' + err.message);
-				if (self.isTransaction)
-					self.isRollback = true;
-			} else {
-				var rows = result.rows;
-
-				if (current.type === 'insert') {
-
-					if (rows.length) {
-						var tmp = parseInt(rows[0].identity);
-						if (isNaN(tmp)) {
-							self.id = rows[0].identity;
-						} else {
-							self.id = tmp;
-							rows[0].identity = tmp;
-						}
-					} else
-						self.id = null;
-
-					if (self.isPut === false)
-						self.$id = self.id;
-				}
-
-				if (current.first && current.column) {
-					if (rows.length)
-						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseFloat(rows[0][current.column] || 0) : rows[0][current.column];
-				} else if (current.first)
-					self.results[current.name] = rows instanceof Array ? rows[0] : rows;
-				else
-					self.results[current.name] = rows;
-
-				self.emit('data', current.name, self.results);
-
-				if (self.$when) {
-					var tmp = self.$when[current.name];
-					if (tmp) {
-						for (var i = 0, length = tmp.length; i < length; i++)
-							tmp[i](self.errors, self.results);
-					}
-				}
-			}
-
-			self.last = item.name;
-			next();
-		};
-
-		if (item.type !== 'begin' && item.type !== 'end') {
-			if (!current.first)
-				current.first = isFIRST(current.query);
-
-			if (Agent.debug)
-				console.log(self.debugname, current.name, current.query);
-
-			self.emit('query', current.name, current.query, current.params);
-			self.db.query({ text: current.query }, current.params, query);
-			return;
-		}
-
-		if (item.type === 'begin') {
-
-			if (Agent.debug)
-				console.log(self.debugname, 'begin transaction');
-
-			self.db.query('BEGIN', function(err) {
 				if (err) {
-					self.errors.push(err.message);
-					self.command.length = 0;
-					next(false);
+					self.errors.push(item.name + ': ' + err.message);
+					next();
 					return;
 				}
-				self.isTransaction = true;
-				self.isRollback = false;
-				next();
+
+				self.results[item.name] = response;
+				self.emit('data', item.name, response);
 			});
 			return;
 		}
 
-		if (item.type === 'end') {
-			self.isTransaction = false;
-			if (self.isRollback) {
+		if (item.type !== 'query') {
+			next();
+			return;
+		}
 
-				if (Agent.debug)
-					console.log(self.debugname, 'rollback transaction');
+		item.fn(self.db.collection(item.table), item.condition, item.helper, function(err, response) {
 
-				self.db.query('ROLLBACK', function(err) {
-					if (!err)
-						return next();
-					self.command.length = 0;
-					self.push(err.message);
-					next(false);
-				});
+			self.last = item.name;
+
+			if (err) {
+				self.errors.push(item.name + ': ' + err.message);
+				next();
 				return;
 			}
 
-			if (Agent.debug)
-				console.log(self.debugname, 'commit transaction');
+			self.results[item.name] = response;
+			self.emit('data', item.name, response);
 
-			self.db.query('COMMIT', function(err) {
-				if (!err)
-					return next();
-				self.errors.push(err.message);
-				self.command.length = 0;
-				self.db.query('ROLLBACK', function(err) {
-					if (!err)
-						return next();
-					self.errors.push(err.message);
-					next();
-				});
-			});
-			return;
-		}
+			if (!self.$when) {
+				next();
+				return
+			}
+
+			var tmp = self.$when[item.name];
+			if (tmp) {
+				for (var i = 0, length = tmp.length; i < length; i++)
+					tmp[i](self.errors, self.results);
+			}
+			next();
+		});
 
 	}, function() {
 		self.time = Date.now() - self.debugtime;
@@ -1561,18 +1342,8 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	if (Agent.debug)
 		console.log(self.debugname, '----- exec');
 
-	database.connect(self.options, function(err, client, done) {
-
-		if (err) {
-			callback.call(self, err, {});
-			return;
-		}
-
-		self.done = done;
-		self.db = client;
-		self._prepare(callback);
-	});
-
+	self.db = DB;
+	self._prepare(callback);
 	return self;
 };
 
@@ -1587,14 +1358,112 @@ Agent.destroy = function() {
 	throw new Error('Not supported.');
 };
 
-Agent.prototype.writeStream = function(filestream, buffersize, callback) {
-};
+Agent.prototype.readFile = function(id, callback) {
+	var reader = new GridStore(DB, ObjectID.parse(id), 'r');
+	reader.open(function(err, fs) {
 
-Agent.prototype.writeBuffer = function(buffer, callback) {
-};
+		if (err) {
+			reader.close();
+			reader = null;
+			return callback(err);
+		}
 
-Agent.prototype.readStream = function(oid, buffersize, callback) {
-};
+		callback(null, fs, function() {
+			reader.close();
+			reader = null;
+		});
+	});
+}
+
+Agent.prototype.readToStream = function(id, stream, callback) {
+	var reader = new GridStore(DB, ObjectID.parse(id), 'r');
+	reader.open(function(err, fs) {
+
+		if (err) {
+			reader.close();
+			reader = null;
+			if (callback)
+				return callback(err);
+			return;
+		}
+
+		fs.stream(true).pipe(stream).on('close', function() {
+			reader.close();
+			reader = null;
+			if (callback)
+				callback(null);
+		});
+
+		callback(null, fs, function() {
+			reader.close();
+			reader = null;
+		});
+	});
+}
+
+Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
+
+	if (!callback)
+		callback = NOOP;
+
+	if (typeof(meta) === FUNCTION) {
+		var tmp = callback;
+		callback = meta;
+		meta = tmp;
+	}
+
+	var arg = [];
+	var grid = new GridStore(DB, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+
+	grid.open(function(err, fs) {
+
+		if (err) {
+			grid.close();
+			grid = null;
+			return callback(err);
+		}
+
+		grid.writeFile(filename, function(err) {
+			if (err)
+				return callback(err);
+			callback(null);
+			grid.close();
+			grid = null;
+		});
+	});
+}
+
+Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
+
+	if (!callback)
+		callback = NOOP;
+
+	if (typeof(meta) === FUNCTION) {
+		var tmp = callback;
+		callback = meta;
+		meta = tmp;
+	}
+
+	var arg = [];
+	var grid = new GridStore(DB, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+
+	grid.open(function(err, fs) {
+
+		if (err) {
+			grid.close();
+			grid = null;
+			return callback(err);
+		}
+
+		grid.write(buffer, function(err) {
+			if (err)
+				return callback(err);
+			callback(null);
+			grid.close();
+			grid = null;
+		});
+	});
+}
 
 function prepare_params(params) {
 	if (!params)
@@ -1615,6 +1484,16 @@ function isFIRST(query) {
 
 Agent.init = function(conn, debug) {
 	Agent.debug = debug ? true : false;
+
+	framework.wait('database');
+	database.connect(conn, function(err, db) {
+		if (err)
+			throw err;
+		DB = db;
+		framework.wait('database');
+		framework.emit('database');
+	});
+
 	framework.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder);
 	};
@@ -1622,3 +1501,36 @@ Agent.init = function(conn, debug) {
 
 module.exports = Agent;
 global.SqlBuilder = SqlBuilder;
+global.ObjectID = database.ObjectID;
+global.GridStore = database.GridStore;
+
+ObjectID.parse = function(value, isArray) {
+	if (value instanceof ObjectID)
+		return value;
+	if (isArray || value instanceof Array)
+		return ObjectID.parseArray(value);
+	try {
+		return new ObjectID(value);
+	} catch (e) {
+		return null;
+	}
+};
+
+ObjectID.parseArray = function(value) {
+
+	if (typeof(value) === STRING)
+		value = value.split(',');
+
+	var arr = [];
+
+	if (!(value instanceof Array))
+		return arr;
+
+	for (var i = 0, length = value.length; i < length; i++) {
+		var id = ObjectID.parse(value[i]);
+		if (id)
+			arr.push(id);
+	}
+
+	return arr;
+};
