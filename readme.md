@@ -46,6 +46,13 @@ var Agent = require('sqlagent/sqlserver');
 var sql = new Agent({ server: '...', database: '...' });
 ```
 
+#### MongoDB
+
+```javascript
+var Agent = require('sqlagent/mongodb');
+var nosql = new Agent('connetion-string-to-mongodb');
+```
+
 ### Initialization for total.js
 
 ```javascript
@@ -53,6 +60,7 @@ var sql = new Agent({ server: '...', database: '...' });
 require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug is by default: false
 require('sqlagent/mysql').init('connetion-string-to-mysql', [debug]); // debug is by default: false
 require('sqlagent/sqlserver').init('connetion-string-to-sqlserver', [debug]); // debug is by default: false
+require('sqlagent/mongodb').init('connetion-string-to-mongodb', [debug]); // debug is by default: false
 
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
@@ -73,24 +81,24 @@ instance.select([name], table, [columns])
 - __returns__ SqlBuilder
 
 ```javascript
-var users = sql.select('users', 'tbl_user', '*');
-users.where('id', '>', 5);
-users.page(10, 10);
+sql.select('users', 'tbl_user').make(function(builder) {
+    builder.where('id', '>', 5);
+    builder.page(10, 10);
+});
 
-var orders = sql.select('orders', 'tbl_order', 'id, name, created');
-orders.where('isremoved', false);
-orders.page(10, 10);
+sql.select('orders', 'tbl_order').make(function(builder) {
+    builder.where('isremoved', false);
+    builder.page(10, 10);
+    builder.fields('amount', 'datecreated');
+});
 
-var products = sql.select('products', 'tbl_products', ['id', 'name']);
-products.between('price', 30, 50);
-products.and();
-products.where('isremoved', false);
-products.limit(20);
-
-var admin = sql.select('admin', 'tbl_admin', { id: true, name: 1, age: null });
-// SELECT id, name, age
-admin.where('hash', 'petersirka');
-admin.first();
+sql.select('products', 'tbl_products').make(function(builder) {
+    builder.between('price', 30, 50);
+    builder.and();
+    builder.where('isremoved', false);
+    builder.limit(20);
+    builder.fields('id', 'name');
+});
 
 sql.exec(function(err, response) {
     console.log(response.users);
@@ -132,11 +140,14 @@ instance.insert([name], table, [value])
 - __returns__ if value is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
-sql.insert('user', 'tbl_user', { name: 'Peter', age: 30 });
+sql.insert('user', 'tbl_user').make(function(builder) {
+    builder.set({ name: 'Peter', age: 30 });
+});
 
-var insert = sql.insert('log', 'tbl_logs');
-insert.set('message', 'Some log message.');
-insert.set('created', new Date());
+sql.insert('log', 'tbl_logs').make(function(builder) {
+    builder.set('message', 'Some log message.');
+    builder.set('created', new Date());
+});
 
 sql.exec(function(err, response) {
     console.log(response.user); // response.user.identity (INSERTED IDENTITY)
@@ -156,15 +167,17 @@ instance.update([name], table, [value])
 - __returns__ if value is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
-var update1 = sql.update('user1', 'tbl_user', { name: 'Peter', age: 30 });
-update1.where('id', 1);
+sql.update('user1', 'tbl_user').make(function(builder) {
+    builder.set({ name: 'Peter', age: 30 });
+    builder.where('id', 1);
+});
 
 // is same as
-
-var update2 = sql.update('user2', 'tbl_user');
-update2.where('id', 1);
-update2.set('name', 'Peter');
-update2.set('age', 30);
+sql.update('user2', 'tbl_user').make(function(builder) {
+    builder.where('id', 1);
+    builder.set('name', 'Peter');
+    builder.set('age', 30);
+});
 
 sql.exec(function(err, response) {
     console.log(response.user1); // returns {Number} (count of changed rows)
@@ -184,8 +197,9 @@ instance.remove([name], table)
 - __returns__ SqlBuilder
 
 ```javascript
-var remove = sql.remove('user', 'tbl_user');
-remove.where('id', 1);
+sql.remove('user', 'tbl_user').make(function(builder) {
+    builder.where('id', 1);
+});
 
 sql.exec(function(err, response) {
     console.log(response.user); // returns {Number} (count of deleted rows)
@@ -204,8 +218,9 @@ instance.query([name], query, [params])
 - __returns__ if params is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
-var query = sql.query('user', 'SELECT * FROM tbl_user');
-query.where('id', 1);
+sql.query('user', 'SELECT * FROM tbl_user').make(function(builder) {
+    builder.where('id', 1);
+});
 
 sql.exec(function(err, response) {
     console.log(response.user);
@@ -270,7 +285,7 @@ sql.exec(function(err, response) {
 ```plain
 instance.max([name], table, column)
 instance.min([name], table, column)
-instance.avg([name], table, column)
+instance.avg([name], table, column) // doesn't work with Mongo
 ```
 
 - __returns__ SqlBuilder
@@ -297,6 +312,8 @@ sql.commit();
 ## Special cases
 
 ### How to set the primary key?
+
+- doesn't work with MongoDB
 
 ```javascript
 // instance.primary('column name') is same as instance.primaryKey('column name')
@@ -328,6 +345,8 @@ sql.exec();
 ```
 
 ### How to use latest primary id value for multiple relations?
+
+- doesn't work with MongoDB
 
 ```javascript
 // primary key is id + autoincrement
@@ -586,6 +605,8 @@ sql.validate('error-users-empty', 'users');
 
 ### Predefined queries
 
+- doesn't work with MongoDB
+
 ```plain
 Agent.query(name, query);
 ```
@@ -624,6 +645,8 @@ sql.exec();
 ## Bonus
 
 ### How to get latest inserted ID?
+
+- doesn't work with MongoDB
 
 ```javascript
 sql.insert('user', 'tbl_user').set('name', 'Peter');
@@ -884,6 +907,8 @@ sets sql.take(1)
 
 #### builder.join()
 
+- doesn't work with MongoDB
+
 ```plain
 builder.join(name, on, [type])
 ```
@@ -916,6 +941,8 @@ add a condition after SQL WHERE
 
 #### builder.group()
 
+- doesn't work with MongoDB
+
 ```plain
 builder.group(name)
 builder.group(name1, name2, name3); // +v2.9.1
@@ -927,6 +954,8 @@ creates a group by in SQL query
 ---
 
 #### builder.having()
+
+- doesn't work with MongoDB
 
 ```plain
 builder.having(condition)
@@ -995,6 +1024,8 @@ adds like command
 
 #### builder.sql()
 
+- doesn't work with MongoDB
+
 ```plain
 builder.sql(query, [param1], [param2], [param..n])
 ```
@@ -1048,6 +1079,8 @@ sql.exec();
 
 #### builder.schema()
 
+- doesn't work with MongoDB
+
 ```plain
 builder.schema()
 ```
@@ -1062,6 +1095,8 @@ builder.fields('!COUNT(id) as count') // --> a.COUNT()
 ```
 
 #### builder.escape()
+
+- doesn't work with MongoDB
 
 ```plain
 builder.escape(string)
@@ -1094,6 +1129,8 @@ replaces current instance of SqlBuilder with new.
 ---
 
 #### builder.toString()
+
+- doesn't work with MongoDB
 
 ```plain
 builder.toString()
