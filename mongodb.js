@@ -933,6 +933,7 @@ Agent.prototype.insert = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	return condition;
 };
 
 Agent.prototype.select = function(name, table) {
@@ -1405,32 +1406,31 @@ Agent.prototype.readToStream = function(id, stream, callback) {
 
 Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 
-	if (!callback)
-		callback = NOOP;
-
-	if (typeof(meta) === FUNCTION) {
+	if (typeof(meta) === 'function') {
 		var tmp = callback;
 		callback = meta;
 		meta = tmp;
 	}
 
 	var arg = [];
-	var grid = new GridStore(DB, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+	var grid = new GridStore(DB, id, name, 'w', { metadata: meta });
 
 	grid.open(function(err, fs) {
 
 		if (err) {
 			grid.close();
 			grid = null;
-			return callback(err);
+			if (callback)
+				callback(err);
+			return;
 		}
 
 		grid.writeFile(filename, function(err) {
-			if (err)
-				return callback(err);
-			callback(null);
 			grid.close();
 			grid = null;
+			if (!callback)
+				return;
+			callback(err);
 		});
 	});
 }
@@ -1440,7 +1440,7 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 	if (!callback)
 		callback = NOOP;
 
-	if (typeof(meta) === FUNCTION) {
+	if (typeof(meta) === 'function') {
 		var tmp = callback;
 		callback = meta;
 		meta = tmp;
