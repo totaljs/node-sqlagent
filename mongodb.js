@@ -733,11 +733,11 @@ Agent.prototype.expected = function(name, index, property) {
 		if (index === undefined) {
 			if (property === undefined)
 				return output;
-			return output[property];
+			return get(output, property);
 		}
 		output = output[index];
 		if (output)
-			return output[property];
+			return get(output, property);
 		return null;
 	};
 };
@@ -927,7 +927,7 @@ Agent.prototype.insert = function(name, table) {
 			delete data.$inc;
 		}
 
-		db.insert(data, function(err, response) {
+		db.insert(data.$set, function(err, response) {
 			callback(err, response ? response.result.insertedCount > 0 : false);
 		});
 	};
@@ -1022,11 +1022,63 @@ Agent.prototype.count = function(name, table, column) {
 };
 
 Agent.prototype.max = function(name, table, column) {
-	throw new Error('Agent.max(' + name + ') is not supported now.');
+
+	if (typeof(table) !== 'string') {
+		table = name;
+		name = self.index++;
+	}
+
+	var self = this;
+	var fn = function(db, builder, helper, callback) {
+
+		builder.prepare();
+		builder.first();
+
+		var cursor = db.find(builder.builder);
+		cursor.sort(builder._order);
+		cursor.project(builder._fields);
+		cursor.limit(1);
+		cursor.toArray(function(err, response) {
+			callback(err, response && response.length ? response[0][helper] : 0);
+		});
+	};
+
+	var condition = new SqlBuilder(0, 0, self);
+	condition.fields(column);
+	condition.sort(column, true);
+
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: column });
+	return condition;
 };
 
 Agent.prototype.min = function(name, table, column) {
-	throw new Error('Agent.min(' + name + ') is not supported now.');
+
+	if (typeof(table) !== 'string') {
+		table = name;
+		name = self.index++;
+	}
+
+	var self = this;
+	var fn = function(db, builder, helper, callback) {
+
+		builder.prepare();
+		builder.first();
+
+		var cursor = db.find(builder.builder);
+		cursor.sort(builder._order);
+		cursor.project(builder._fields);
+		cursor.limit(1);
+		cursor.toArray(function(err, response) {
+			callback(err, response && response.length ? response[0][helper] : 0);
+		});
+	};
+
+	var condition = new SqlBuilder(0, 0, self);
+	condition.fields(column);
+	condition.sort(column, false);
+
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: column });
+	return condition;
 };
 
 Agent.prototype.avg = function(name, table, column) {
@@ -1535,4 +1587,29 @@ ObjectID.parseArray = function(value) {
 	}
 
 	return arr;
+};
+
+function get(obj, path) {
+
+	var cachekey = '=' + path;
+
+	if (columns_cache[cachekey])
+		return columns_cache[cachekey](obj);
+
+	var arr = path.split('.');
+	var builder = [];
+	var p = '';
+
+	for (var i = 0, length = arr.length - 1; i < length; i++) {
+		var tmp = arr[i];
+		var index = tmp.lastIndexOf('[');
+		if (index !== -1)
+			builder.push('if(!w.' + (p ? p + '.' : '') + tmp.substring(0, index) + ')return');
+		p += (p !== '' ? '.' : '') + arr[i];
+		builder.push('if(!w.' + p + ')return');
+	}
+
+	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(/\'/, '\'')));
+	columns_cache[cachekey] = fn;
+	return fn(obj);
 };
