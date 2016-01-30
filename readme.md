@@ -8,7 +8,7 @@ Then is needed to install a database driver: `npm install pg` or `npm install my
 
 ---
 
-- Currently supports __PostgreSQL__, __MySQL__, __SQL Server__ and MongoDB
+- Currently supports __PostgreSQL__, __MySQL__, __SQL Server__ and __MongoDB__
 - Simple and powerful
 - Best use with [total.js - web application framework for node.js](https://www.totaljs.com)
 
