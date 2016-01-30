@@ -8,7 +8,7 @@ Then is needed to install a database driver: `npm install pg` or `npm install my
 
 ---
 
-- Currently supports __PostgreSQL__, __MySQL__ and __SQL Server__
+- Currently supports __PostgreSQL__, __MySQL__, __SQL Server__ and MongoDB
 - Simple and powerful
 - Best use with [total.js - web application framework for node.js](https://www.totaljs.com)
 
@@ -301,6 +301,7 @@ sql.exec(function(err, response) {
 
 ### Transactions
 
+- doesn't work with MongoDB
 - rollback is performed automatically
 
 ```javascript
