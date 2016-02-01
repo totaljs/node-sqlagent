@@ -913,6 +913,12 @@ Agent.prototype.insert = function(name, table) {
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
 
+
+		if (!builder._set && !builder._inc) {
+			callback(new Error('No data for insert.'), null);
+			return;
+		}
+
 		var data = builder.data;
 
 		if (data.$inc) {
@@ -1101,6 +1107,12 @@ Agent.prototype.update = function(name, table) {
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
+
+		if (!builder._set && !builder._inc) {
+			callback(new Error('No data for update.'), null);
+			return;
+		}
+
 		if (builder._isfirst) {
 			db.updateOne(builder.builder, builder.data, function(err, response) {
 				callback(err, response ? response.result.nModified > 0 : false);
