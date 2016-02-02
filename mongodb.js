@@ -1412,7 +1412,7 @@ Agent.prototype.readFile = function(id, callback) {
 };
 
 Agent.prototype.readStream = function(id, callback) {
-	var reader = new GridStore(DB, ObjectID.parse(id), 'r');
+	var reader = new GridStore(DB, id, 'r');
 	reader.open(function(err, fs) {
 
 		if (err) {
