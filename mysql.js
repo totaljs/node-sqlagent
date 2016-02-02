@@ -1348,7 +1348,9 @@ Agent.prototype._prepare = function(callback) {
 
 		if (item.type === 'validate') {
 			try {
-				item.fn(self.errors, self.results, function(output) {
+				var tmp = item.fn(self.errors, self.results, fn);
+				var type = typeof(tmp);
+				var fn = function(output) {
 					if (output === true || output === undefined)
 						return next();
 					// reason
@@ -1365,7 +1367,13 @@ Agent.prototype._prepare = function(callback) {
 						next();
 					} else
 						next(false);
-				});
+				};
+
+				if (type === 'boolean' || type === 'string') {
+					fn(tmp);
+					return;
+				}
+
 			} catch (e) {
 				self.rollback('validate', e, next);
 			}
@@ -1470,7 +1478,7 @@ Agent.prototype._prepare = function(callback) {
 
 				if (current.type === 'insert') {
 					self.id = rows.insertId;
-					if (self.isPut === false)
+					if (!self.isPut)
 						self.$id = self.id;
 					rows.identity = self.id;
 				}
