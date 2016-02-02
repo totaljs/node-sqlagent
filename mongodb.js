@@ -880,7 +880,7 @@ Agent.prototype.insert = function(name, table) {
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
-			callback(new Error('No data for insert.'), null);
+			callback(new Error('No data for inserting.'), null);
 			return;
 		}
 
@@ -899,7 +899,7 @@ Agent.prototype.insert = function(name, table) {
 		}
 
 		db.insert(data.$set, function(err, response) {
-			var id = response ? (response.result.insertedIds.length > 1 ? response.result.insertedIds : response.result.insertedIds[0]) : null;
+			var id = response ? (response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null;
 			self.id = id;
 			if (!self.isPut)
 				self.$id = self.id;
