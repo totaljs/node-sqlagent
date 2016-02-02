@@ -899,7 +899,7 @@ Agent.prototype.insert = function(name, table) {
 		}
 
 		db.insert(data.$set, function(err, response) {
-			var id = response ? (response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null;
+			var id = response ? (response.insertedCount ? (response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null) : null;
 			self.id = id;
 			if (!self.isPut)
 				self.$id = self.id;
