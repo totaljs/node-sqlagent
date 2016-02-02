@@ -350,8 +350,6 @@ sql.exec();
 
 ### How to use latest primary id value for multiple relations?
 
-- doesn't work with MongoDB
-
 ```javascript
 // primary key is id + autoincrement
 var user = sql.insert('user', 'tbl_user');
