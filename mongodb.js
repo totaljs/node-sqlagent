@@ -370,40 +370,23 @@ SqlBuilder.prototype.clear = function() {
 };
 
 SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
+	console.log('SqlBuilder.escape() is not supported.');
 	return value;
 };
 
 SqlBuilder.column = function(name, schema) {
+	console.log('SqlBuilder.column() is not supported.');
 	return name;
 };
 
 SqlBuilder.prototype.group = function(names) {
-	var self = this;
-
-	if (names instanceof Array) {
-		for (var i = 0, length = names.length; i < length; i++)
-			names[i] = SqlBuilder.column(names[i], self._schema);
-		self._group = 'GROUP BY ' + names.join(',');
-	} else if (names) {
-		var arr = new Array(arguments.length);
-		for (var i = 0; i < arguments.length; i++)
-			arr[i] = SqlBuilder.column(arguments[i.toString()], self._schema);
-		self._group = 'GROUP BY ' + arr.join(',');
-	} else
-		delete self._group;
-
-	return self;
+	console.log('SqlBuilder.group() is not supported.');
+	return this;
 };
 
 SqlBuilder.prototype.having = function(condition) {
-	var self = this;
-
-	if (condition)
-		self._having = 'HAVING ' + condition;
-	else
-		delete self._having;
-
-	return self;
+	console.log('SqlBuilder.having() is not supported.');
+	return this;
 };
 
 SqlBuilder.prototype.and = function() {
@@ -511,14 +494,13 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 };
 
 SqlBuilder.prototype.query = function(obj) {
-	return this.sql(obj);
+	console.log('SqlBuilder.query() is not supported.');
+	return this;
 };
 
 SqlBuilder.prototype.sql = function(obj) {
-	var self = this;
-	// @TODO: extend
-	self._is = true;
-	return self;
+	console.log('SqlBuilder.sql() is not supported.');
+	return this;
 };
 
 SqlBuilder.prototype.toString = function() {
@@ -865,23 +847,6 @@ Agent.prototype.commit = function() {
 	return this;
 };
 
-function prepareValue(value, type) {
-
-	if (value === undefined || value === null)
-		return null;
-
-	if (!type)
-		type = typeof(value);
-
-	if (type === 'function')
-		return value();
-
-	if (type === 'string')
-		return value.trim();
-
-	return value;
-}
-
 Agent.prototype.save = function(name, table, insert, maker) {
 
 	if (typeof(table) === 'boolean') {
@@ -911,8 +876,8 @@ Agent.prototype.insert = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
+		var self = this;
 		builder.prepare();
-
 
 		if (!builder._set && !builder._inc) {
 			callback(new Error('No data for insert.'), null);
@@ -934,7 +899,11 @@ Agent.prototype.insert = function(name, table) {
 		}
 
 		db.insert(data.$set, function(err, response) {
-			callback(err, response ? response.result.insertedCount > 0 : false);
+			var id = response ? (response.result.insertedIds.length > 1 ? response.result.insertedIds : response.result.insertedIds[0]) : null;
+			self.id = id;
+			if (!self.isPut)
+				self.$id = self.id;
+			callback(err, id ? { identity: id } : null);
 		});
 	};
 
@@ -1212,9 +1181,6 @@ Agent.prototype._prepare = function(callback) {
 
 	var self = this;
 
-	self.isRollback = false;
-	self.isTransaction = false;
-
 	if (!self.errors)
 		self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
 
@@ -1222,7 +1188,9 @@ Agent.prototype._prepare = function(callback) {
 
 		if (item.type === 'validate') {
 			try {
-				item.fn(self.errors, self.results, function(output) {
+				var tmp = item.fn(self.errors, self.results, fn);
+				var type = typeof(tmp);
+				var fn = function(output) {
 					if (output === true || output === undefined)
 						return next();
 					// reason
@@ -1230,16 +1198,14 @@ Agent.prototype._prepare = function(callback) {
 						self.errors.push(output);
 					else if (item.error)
 						self.errors.push(item.error);
+					next(false);
+				};
 
-					// we have error
-					if (self.isTransaction) {
-						self.command.length = 0;
-						self.isRollback = true;
-						self.end();
-						next();
-					} else
-						next(false);
-				});
+				if (type === 'boolean' || type === 'string') {
+					fn(tmp);
+					return;
+				}
+
 			} catch (e) {
 				self.rollback('validate', e, next);
 			}
@@ -1426,23 +1392,23 @@ Agent.destroy = function() {
 };
 
 Agent.prototype.readFile = function(id, callback) {
-	var reader = new GridStore(DB, ObjectID.parse(id), 'r');
+	var reader = new GridStore(DB, id, 'r');
 	reader.open(function(err, fs) {
 
 		if (err) {
 			reader.close();
 			reader = null;
-			return callback(err);
+			return callback(err, undefined, NOOP);
 		}
 
 		callback(null, fs, function() {
 			reader.close();
 			reader = null;
-		});
+		}, fs.metadata);
 	});
-}
+};
 
-Agent.prototype.readToStream = function(id, stream, callback) {
+Agent.prototype.readStream = function(id, callback) {
 	var reader = new GridStore(DB, ObjectID.parse(id), 'r');
 	reader.open(function(err, fs) {
 
@@ -1454,19 +1420,14 @@ Agent.prototype.readToStream = function(id, stream, callback) {
 			return;
 		}
 
-		fs.stream(true).pipe(stream).on('close', function() {
-			reader.close();
-			reader = null;
-			if (callback)
-				callback(null);
-		});
-
-		callback(null, fs, function() {
+		var stream = fs.stream(true);
+		callback(null, stream, fs.metadata);
+		stream.on('close', function() {
 			reader.close();
 			reader = null;
 		});
 	});
-}
+};
 
 Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 
@@ -1497,7 +1458,7 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 			callback(err);
 		});
 	});
-}
+};
 
 Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 
@@ -1529,24 +1490,7 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 			grid = null;
 		});
 	});
-}
-
-function prepare_params(params) {
-	if (!params)
-		return params;
-	for (var i = 0, length = params.length; i < length; i++) {
-		var param = params[i];
-		if (typeof(param) === 'function')
-			params[i] = param(params);
-	}
-	return params;
-}
-
-function isFIRST(query) {
-	if (!query)
-		return false;
-	return query.substring(query.length - 7).toLowerCase() === 'limit 1';
-}
+};
 
 Agent.init = function(conn, debug) {
 	Agent.debug = debug ? true : false;
