@@ -1348,9 +1348,7 @@ Agent.prototype._prepare = function(callback) {
 
 		if (item.type === 'validate') {
 			try {
-				var tmp = item.fn(self.errors, self.results, fn);
-				var type = typeof(tmp);
-				var fn = function(output) {
+				var tmp = item.fn(self.errors, self.results, function(output) {
 					if (output === true || output === undefined)
 						return next();
 					// reason
@@ -1358,7 +1356,6 @@ Agent.prototype._prepare = function(callback) {
 						self.errors.push(output);
 					else if (item.error)
 						self.errors.push(item.error);
-
 					// we have error
 					if (self.isTransaction) {
 						self.command.length = 0;
@@ -1367,13 +1364,27 @@ Agent.prototype._prepare = function(callback) {
 						next();
 					} else
 						next(false);
-				};
+				});
 
-				if (type === 'boolean' || type === 'string') {
-					fn(tmp);
+				var type = typeof(tmp);
+				if (type !== 'boolean' && type !== 'string')
 					return;
-				}
-
+				if (tmp === true || tmp === undefined)
+					return next();
+				// reason
+				if (typeof(tmp) === 'string')
+					self.errors.push(tmp);
+				else if (item.error)
+					self.errors.push(item.error);
+				// we have error
+				if (self.isTransaction) {
+					self.command.length = 0;
+					self.isRollback = true;
+					self.end();
+					next();
+				} else
+					next(false);
+				return;
 			} catch (e) {
 				self.rollback('validate', e, next);
 			}
