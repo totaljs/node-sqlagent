@@ -1200,17 +1200,15 @@ Agent.prototype._prepare = function(callback) {
 				});
 
 				var type = typeof(tmp);
-				if (type === 'boolean' || type === 'string') {
-					if (tmp === true || tmp === undefined)
-						return next();
-					if (typeof(tmp) === 'string')
-						self.errors.push(tmp);
-					else if (item.error)
-						self.errors.push(item.error);
-					next(false);
+				if (type !== 'boolean' && type !== 'string')
 					return;
-				}
-
+				if (tmp === true || tmp === undefined)
+					return next();
+				if (typeof(tmp) === 'string')
+					self.errors.push(tmp);
+				else if (item.error)
+					self.errors.push(item.error);
+				next(false);
 			} catch (e) {
 				self.rollback('validate', e, next);
 			}
