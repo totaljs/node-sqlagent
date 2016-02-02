@@ -975,7 +975,7 @@ Agent.prototype.exists = function(name, table) {
 		});
 	};
 
-	self.command.push({ type: 'query', name: name, table: table, condition: condition });
+	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
 	return condition;
 };
 
