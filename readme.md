@@ -503,6 +503,24 @@ user.set('name', 'Peter');
 sql.exec();
 ```
 
+__Validation alternative (+v4.0.0)__
+
+```javascript
+// IMPORTANT:
+sql.validate(function(error, response) {
+
+    // error === ErrorBuilder
+
+    if (!response.address) {
+        error.push('Sorry, address not found');
+        return false;
+    }
+
+    sql.builder('user').set('idaddress', response.id);
+    return true;
+});
+```
+
 ---
 
 ```plain
@@ -1140,6 +1158,68 @@ replaces current instance of SqlBuilder with new.
 builder.toString()
 ```
 creates escaped SQL query (internal)
+
+## Blob
+
+### PostgreSQL
+
+- `npm install pg-large-object`
+- all file operations are executed just-in-time (you don't need to call `sql.exec()`)
+- all file operations aren't executed in queue
+
+```javascript
+// sql.writeStream(filestream, [buffersize](default: 16384), callback(err, loid))
+sql.writeStream(Fs.createReadStream('/somefile.png'), function(err, loid) {
+    // Now is the file inserted
+    // Where is the file stored?
+    
+    // loid === NUMBER
+    // SELECT * FROM pg_largeobject WHERE loid=loid
+});
+
+// sql.writeBuffer(buffer, callback(err, loid))
+sql.writeBuffer(new Buffer('Peter Širka', 'utf8'), function(err, loid) {
+    // Now is the buffer inserted
+    // Where is the buffer stored?
+    
+    // loid === NUMBER
+    // SELECT * FROM pg_largeobject WHERE loid=loid
+});
+
+// sql.readStream(loid, [buffersize](defualt: 16384), callback(err, stream, size))
+sql.readStream(loid, function(err, stream, size) {
+    // stream is created
+});
+```
+
+### MongoDB
+
+- all file operations are executed just-in-time (you don't need to call `sql.exec()`)
+- all file operations aren't executed in queue
+
+```javascript
+// sql.writeFile(id, filename, name, [meta], callback)
+sql.writeFile(new ObjectID(), '/path/somefile.png', 'somefile.png', function(err) {
+    // Now is the file inserted
+});
+
+// sql.writeBuffer(id, buffer, filename, [meta], callback)
+sql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), function(err) {
+    // Now is the buffer inserted    
+});
+
+// sql.readFile(id, callback(err, gs, close, metadata))
+sql.readFile(some_object_id, function(err, gs, close, metadata) {
+    // gs = GridStore
+    // gs.stream(true);
+    close();
+});
+
+// sql.readStream(id, callback(err, stream, metadata))
+sql.readStream(loid, function(err, stream, metadata) {
+    stream.pipe(Fs.createWriteStream('myfile.png'));
+});
+```
 
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
 [license-url]: license.txt
