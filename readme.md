@@ -17,9 +17,9 @@
 
 __IMPORTANT__:
 
-- code is executed as it's added
-- rollback is executed automatically when is transaction enable
-- SQL Server: pagination works only in SQL SERVER >=2012
+- the code is executed as is added
+- `rollback` is executed automatically when is the transaction enabled
+- SQL Server: pagination works only in `SQL SERVER >=2012`
 - `SqlBuilder` is a global object
 
 ## Initialization
