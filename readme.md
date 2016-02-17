@@ -58,6 +58,8 @@ var nosql = new Agent('connetion-string-to-mongodb');
 
 ### Initialization for total.js
 
+Create a definition file:
+
 ```javascript
 // Below code rewrites total.js database prototype
 require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug is by default: false
@@ -65,9 +67,15 @@ require('sqlagent/mysql').init('connetion-string-to-mysql', [debug]); // debug i
 require('sqlagent/sqlserver').init('connetion-string-to-sqlserver', [debug]); // debug is by default: false
 require('sqlagent/mongodb').init('connetion-string-to-mongodb', [debug]); // debug is by default: false
 
+// When you use RDMBS:
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
 // sql === SqlAgent
+
+// When you use MongoDB:
+// var nosql = DATABASE([ErrorBuilder]);
+var nosql = DATABASE();
+// nosql === SqlAgent
 ```
 
 ## Usage
