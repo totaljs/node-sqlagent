@@ -1378,8 +1378,28 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	if (Agent.debug)
 		console.log(self.debugname, '----- exec');
 
-	self.db = DB;
-	self._prepare(callback);
+	// total.js
+	if (DB) {
+		self.db = DB;
+		self._prepare(callback);
+		return;
+	}
+
+	connect(this.options, function(err, db) {
+
+		if (err) {
+			callback(err, {});
+			return;
+		}
+
+		self.db = db;
+		self.done = function() {
+			db.close();
+		};
+
+		self._prepare(callback);
+	});
+
 	return self;
 };
 
@@ -1395,39 +1415,53 @@ Agent.destroy = function() {
 };
 
 Agent.prototype.readFile = function(id, callback) {
-	var reader = new GridStore(DB, id, 'r');
-	reader.open(function(err, fs) {
+	connect(this.options, function(err, db) {
 
-		if (err) {
-			reader.close();
-			reader = null;
-			return callback(err, undefined, NOOP);
-		}
+		if (err)
+			return callback(err);
 
-		callback(null, fs, function() {
-			reader.close();
-			reader = null;
-		}, fs.metadata);
+		var reader = new GridStore(db, id, 'r');
+		reader.open(function(err, fs) {
+			if (err) {
+				reader.close();
+				db.close();
+				reader = null;
+				return callback(err, undefined, NOOP);
+			}
+
+			callback(null, fs, function() {
+				reader.close();
+				db.close();
+				reader = null;
+			}, fs.metadata);
+		});
 	});
 };
 
 Agent.prototype.readStream = function(id, callback) {
-	var reader = new GridStore(DB, id, 'r');
-	reader.open(function(err, fs) {
+	connect(this.options, function(err, db) {
+		if (err)
+			return callback(err);
 
-		if (err) {
-			reader.close();
-			reader = null;
-			if (callback)
-				return callback(err);
-			return;
-		}
+		var reader = new GridStore(db, id, 'r');
+		reader.open(function(err, fs) {
 
-		var stream = fs.stream(true);
-		callback(null, stream, fs.metadata);
-		stream.on('close', function() {
-			reader.close();
-			reader = null;
+			if (err) {
+				db.close();
+				reader.close();
+				reader = null;
+				if (callback)
+					callback(err);
+				return;
+			}
+
+			var stream = fs.stream(true);
+			callback(null, stream, fs.metadata, fs.length);
+			stream.on('close', function() {
+				db.close();
+				reader.close();
+				reader = null;
+			});
 		});
 	});
 };
@@ -1440,25 +1474,32 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 		meta = tmp;
 	}
 
-	var arg = [];
-	var grid = new GridStore(DB, id, name, 'w', { metadata: meta });
+	connect(this.options, function(err, db) {
 
-	grid.open(function(err, fs) {
+		if (err)
+			return callback(err);
 
-		if (err) {
-			grid.close();
-			grid = null;
-			if (callback)
-				callback(err);
-			return;
-		}
+		var arg = [];
+		var grid = new GridStore(db, id, name, 'w', { metadata: meta });
+		grid.open(function(err, fs) {
 
-		grid.writeFile(filename, function(err) {
-			grid.close();
-			grid = null;
-			if (!callback)
+			if (err) {
+				grid.close();
+				db.close();
+				grid = null;
+				if (callback)
+					callback(err);
 				return;
-			callback(err);
+			}
+
+			grid.writeFile(filename, function(err) {
+				grid.close();
+				db.close();
+				grid = null;
+				if (!callback)
+					return;
+				callback(err);
+			});
 		});
 	});
 };
@@ -1474,23 +1515,30 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 		meta = tmp;
 	}
 
-	var arg = [];
-	var grid = new GridStore(DB, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+	connect(this.options, function(err, db) {
 
-	grid.open(function(err, fs) {
-
-		if (err) {
-			grid.close();
-			grid = null;
+		if (err)
 			return callback(err);
-		}
 
-		grid.write(buffer, function(err) {
-			if (err)
+		var grid = new GridStore(db, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+
+		grid.open(function(err, fs) {
+
+			if (err) {
+				grid.close();
+				db.close();
+				grid = null;
 				return callback(err);
-			callback(null);
-			grid.close();
-			grid = null;
+			}
+
+			grid.write(buffer, function(err) {
+				grid.close();
+				db.close();
+				grid = null;
+				if (err)
+					callback(err);
+				callback(null);
+			});
 		});
 	});
 };
@@ -1511,6 +1559,12 @@ Agent.init = function(conn, debug) {
 		return new Agent(conn, errorBuilder);
 	};
 };
+
+function connect(str, callback) {
+	database.connect(str, function(err, db) {
+		callback(err, db);
+	});
+}
 
 module.exports = Agent;
 global.SqlBuilder = SqlBuilder;
