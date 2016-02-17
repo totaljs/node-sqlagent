@@ -1192,25 +1192,25 @@ sql.readStream(loid, function(err, stream, size) {
 - all file operations aren't executed in queue
 
 ```javascript
-// sql.writeFile(id, filename, name, [meta], callback)
-sql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
+// nosql.writeFile(id, filename, name, [meta], callback)
+nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
     // Now is the file inserted
 });
 
-// sql.writeBuffer(id, buffer, filename, [meta], callback)
-sql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), function(err) {
+// nosql.writeBuffer(id, buffer, filename, [meta], callback)
+nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), function(err) {
     // Now is the buffer inserted    
 });
 
-// sql.readFile(id, callback(err, gs, close, metadata))
-sql.readFile(some_object_id, function(err, gs, close, metadata) {
+// nosql.readFile(id, callback(err, gs, close, metadata))
+nosql.readFile(some_object_id, function(err, gs, close, metadata) {
     // gs = GridStore
     // gs.stream(true);
     close();
 });
 
-// sql.readStream(id, callback(err, stream, metadata))
-sql.readStream(loid, function(err, stream, metadata) {
+// nosql.readStream(id, callback(err, stream, metadata))
+nosql.readStream(loid, function(err, stream, metadata) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
 });
 ```
