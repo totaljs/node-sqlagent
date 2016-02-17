@@ -1200,12 +1200,12 @@ sql.readStream(loid, function(err, stream, size) {
 - all file operations aren't executed in queue
 
 ```javascript
-// nosql.writeFile(id, filename, name, [meta], callback)
+// nosql.writeFile(id, filename, name, [metadata], callback)
 nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
     // Now is the file inserted
 });
 
-// nosql.writeBuffer(id, buffer, filename, [meta], callback)
+// nosql.writeBuffer(id, buffer, filename, [metadata], callback)
 nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), function(err) {
     // Now is the buffer inserted    
 });
