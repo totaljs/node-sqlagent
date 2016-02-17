@@ -1218,7 +1218,7 @@ nosql.readFile(some_object_id, function(err, gs, close, metadata) {
 });
 
 // nosql.readStream(id, callback(err, stream, metadata))
-nosql.readStream(loid, function(err, stream, metadata) {
+nosql.readStream(id, function(err, stream, metadata) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
 });
 ```
