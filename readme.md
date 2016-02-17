@@ -1167,7 +1167,7 @@ creates escaped SQL query (internal)
 
 ```javascript
 // sql.writeStream(filestream, [buffersize](default: 16384), callback(err, loid))
-sql.writeStream(Fs.createReadStream('/somefile.png'), function(err, loid) {
+sql.writeStream(Fs.createReadStream('/file.png'), function(err, loid) {
     // Now is the file inserted
     // Where is the file stored?
     
@@ -1184,7 +1184,7 @@ sql.writeBuffer(new Buffer('Peter Širka', 'utf8'), function(err, loid) {
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
 
-// sql.readStream(loid, [buffersize](defualt: 16384), callback(err, stream, size))
+// sql.readStream(loid, [buffersize](default: 16384), callback(err, stream, size))
 sql.readStream(loid, function(err, stream, size) {
     // stream is created
 });
@@ -1197,7 +1197,7 @@ sql.readStream(loid, function(err, stream, size) {
 
 ```javascript
 // sql.writeFile(id, filename, name, [meta], callback)
-sql.writeFile(new ObjectID(), '/path/somefile.png', 'somefile.png', function(err) {
+sql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
     // Now is the file inserted
 });
 
