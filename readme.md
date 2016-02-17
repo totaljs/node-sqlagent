@@ -75,12 +75,11 @@ var sql = DATABASE();
 ### Select
 
 ```plain
-instance.select([name], table, [columns])
+instance.select([name], table)
 ```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
-- `colums` (String, Array or Object (keys will be as columns))
 - __returns__ SqlBuilder
 
 ```javascript
@@ -134,12 +133,11 @@ sql.save('user', 'tbl_user', somemodel.id === 0, function(builder, isINSERT) {
 ### Insert
 
 ```plain
-instance.insert([name], table, [value])
+instance.insert([name], table)
 ```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
-- `value` (Object) optional (value can be SqlBuilder)
 - __returns__ if value is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
@@ -161,12 +159,11 @@ sql.exec(function(err, response) {
 ### Update
 
 ```plain
-instance.update([name], table, [value])
+instance.update([name], table)
 ```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `table` (String) table name, the library automatically creates SQL query
-- `value` (Object) optional (value can be SqlBuilder)
 - __returns__ if value is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
@@ -212,12 +209,11 @@ sql.exec(function(err, response) {
 ### Query
 
 ```plain
-instance.query([name], query, [params])
+instance.query([name], query)
 ```
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `query` (String) SQL query
-- `params` (Object Array) optional
 - __returns__ if params is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
