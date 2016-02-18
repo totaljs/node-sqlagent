@@ -2,7 +2,7 @@ var database = require('mongodb');
 var Events = require('events');
 var columns_cache = {};
 var NOOP = function(){};
-var DB;
+var CONNECTIONS = {};
 
 require('./index');
 
@@ -596,8 +596,8 @@ SqlBuilder.prototype.make = function(fn) {
 	return self.agent || self;
 };
 
-function Agent(options, error) {
-	this.options = options;
+function Agent(name, error) {
+	this.connection = name;
 	this.command = [];
 	this.db = null;
 	this.done = null;
@@ -640,6 +640,22 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 
 // Debug mode (output to console)
 Agent.debug = false;
+
+Agent.connect = function(conn, callback) {
+	database.connect(conn, function(err, db) {
+		if (err) {
+			if (callback)
+				return callback(err);
+			throw err;
+		}
+		CONNECTIONS[conn] = db;
+		if (callback)
+			callback();
+	});
+	return function(error) {
+		return new Agent(conn, error);
+	};
+};
 
 Agent.prototype.when = function(name, fn) {
 
@@ -1378,30 +1394,36 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	if (Agent.debug)
 		console.log(self.debugname, '----- exec');
 
-	// total.js
-	if (DB) {
-		self.db = DB;
-		self._prepare(callback);
-		return;
-	}
-
-	connect(this.options, function(err, db) {
-
+	connect(self.connection, function(err, db) {
 		if (err) {
-			callback(err, {});
-			return;
+			if (callback)
+				return callback.call(self, err, {});
+			throw err;
 		}
-
 		self.db = db;
-		self.done = function() {
-			db.close();
-		};
-
 		self._prepare(callback);
 	});
 
 	return self;
 };
+
+function connect(conn, callback, index) {
+	var db = CONNECTIONS[conn];
+	if (db)
+		return callback(null, db);
+
+	if (index > 60) {
+		callback(new Error('SQLAgent: timeout to connect into the database.'));
+		return;
+	}
+
+	if (index === undefined)
+		index = 1;
+
+	setTimeout(function() {
+		connect(conn, callback, index + 1);
+	}, 100);
+}
 
 Agent.prototype.$$exec = function(returnIndex) {
 	var self = this;
@@ -1415,7 +1437,7 @@ Agent.destroy = function() {
 };
 
 Agent.prototype.readFile = function(id, callback) {
-	connect(this.options, function(err, db) {
+	connect(this.connection, function(err, db) {
 
 		if (err)
 			return callback(err);
@@ -1424,14 +1446,12 @@ Agent.prototype.readFile = function(id, callback) {
 		reader.open(function(err, fs) {
 			if (err) {
 				reader.close();
-				db.close();
 				reader = null;
 				return callback(err, undefined, NOOP);
 			}
 
 			callback(null, fs, function() {
 				reader.close();
-				db.close();
 				reader = null;
 			}, fs.metadata);
 		});
@@ -1439,7 +1459,7 @@ Agent.prototype.readFile = function(id, callback) {
 };
 
 Agent.prototype.readStream = function(id, callback) {
-	connect(this.options, function(err, db) {
+	connect(this.connection, function(err, db) {
 		if (err)
 			return callback(err);
 
@@ -1447,7 +1467,6 @@ Agent.prototype.readStream = function(id, callback) {
 		reader.open(function(err, fs) {
 
 			if (err) {
-				db.close();
 				reader.close();
 				reader = null;
 				if (callback)
@@ -1458,7 +1477,6 @@ Agent.prototype.readStream = function(id, callback) {
 			var stream = fs.stream(true);
 			callback(null, stream, fs.metadata, fs.length);
 			stream.on('close', function() {
-				db.close();
 				reader.close();
 				reader = null;
 			});
@@ -1474,7 +1492,7 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 		meta = tmp;
 	}
 
-	connect(this.options, function(err, db) {
+	connect(this.connection, function(err, db) {
 
 		if (err)
 			return callback(err);
@@ -1485,7 +1503,6 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 
 			if (err) {
 				grid.close();
-				db.close();
 				grid = null;
 				if (callback)
 					callback(err);
@@ -1494,7 +1511,6 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 
 			grid.writeFile(filename, function(err) {
 				grid.close();
-				db.close();
 				grid = null;
 				if (!callback)
 					return;
@@ -1515,7 +1531,7 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 		meta = tmp;
 	}
 
-	connect(this.options, function(err, db) {
+	connect(this.connection, function(err, db) {
 
 		if (err)
 			return callback(err);
@@ -1526,14 +1542,12 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 
 			if (err) {
 				grid.close();
-				db.close();
 				grid = null;
 				return callback(err);
 			}
 
 			grid.write(buffer, function(err) {
 				grid.close();
-				db.close();
 				grid = null;
 				if (err)
 					callback(err);
@@ -1550,7 +1564,7 @@ Agent.init = function(conn, debug) {
 	database.connect(conn, function(err, db) {
 		if (err)
 			throw err;
-		DB = db;
+		CONNECTIONS[conn] = db;
 		framework.wait('database');
 		framework.emit('database');
 	});
@@ -1559,12 +1573,6 @@ Agent.init = function(conn, debug) {
 		return new Agent(conn, errorBuilder);
 	};
 };
-
-function connect(str, callback) {
-	database.connect(str, function(err, db) {
-		callback(err, db);
-	});
-}
 
 module.exports = Agent;
 global.SqlBuilder = SqlBuilder;

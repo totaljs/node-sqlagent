@@ -29,31 +29,33 @@ __IMPORTANT__:
 #### PostgreSQL
 
 ```javascript
-var Agent = require('sqlagent/pg');
-var sql = new Agent('connetion-string-to-postgresql');
+// Example: postgre://user:password@127.0.0.1/database
+var Agent = require('sqlagent/pg').connect('connetion-string-to-postgresql');
+var sql = new Agent();
 ```
 
 #### MySQL
 
 ```javascript
-var Agent = require('sqlagent/mysql');
-// var sql = new Agent('mysql://user:password@127.0.0.1/database');
-var sql = new Agent({ host: '...', database: '...' });
+// Example: mysql://user:password@127.0.0.1/database
+var Agent = require('sqlagent/mysql').connect('connetion-string-to-mysql');
+var sql = new Agent();
 ```
 
 #### SQL Server (MSSQL)
 
 ```javascript
-var Agent = require('sqlagent/sqlserver');
-// var sql = new Agent('mssql://user:password@127.0.0.1/database');
-var sql = new Agent({ server: '...', database: '...' });
+// Example: mssql://user:password@127.0.0.1/database
+var Agent = require('sqlagent/sqlserver').connect('connetion-string-to-mssql');
+var sql = new Agent();
 ```
 
 #### MongoDB
 
 ```javascript
-var Agent = require('sqlagent/mongodb');
-var nosql = new Agent('connetion-string-to-mongodb');
+// Example: mongodb://user:password@127.0.0.1/database
+var Agent = require('sqlagent/mongodb').connect('connetion-string-to-mongodb');
+var nosql = new Agent();
 ```
 
 ### Initialization for total.js

@@ -661,6 +661,14 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 // Debug mode (output to console)
 Agent.debug = false;
 
+Agent.connect = function(conn, callback) {
+	if (callback)
+		callback(null);
+	return function(error) {
+		return new Agent(conn, error);
+	};
+};
+
 Agent.prototype.clear = function() {
 	this.command = [];
 	this.db = null;

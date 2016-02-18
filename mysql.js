@@ -649,6 +649,15 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 // Debug mode (output to console)
 Agent.debug = false;
 
+Agent.connect = function(conn, callback) {
+	if (callback)
+		callback(null);
+	var id = (Math.random() * 1000000) >> 0;
+	return function(error) {
+		return new Agent(conn, error, id);
+	};
+};
+
 Agent.prototype.clear = function() {
 	this.db = null;
 	this.command = [];
@@ -1714,7 +1723,7 @@ function isFIRST(query) {
 
 Agent.init = function(conn, debug) {
 	Agent.debug = debug ? true : false;
-	var id = typeof(conn) === 'string' ? conn.hash() : JSON.stringify(conn).hash();
+	var id = (Math.random() * 100000) >> 0;
 	framework.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder, id);
 	};
