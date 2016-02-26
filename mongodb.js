@@ -248,7 +248,7 @@ SqlBuilder.prototype.order = function(name, desc) {
 	if (self._order === null)
 		self._order = {};
 
-	var key = '<' + name + '>';
+	var key = '<' + name + '.' + (desc || 'false') + '>';
 
 	if (columns_cache[key]) {
 		self._order[columns_cache[key].name] = columns_cache[key].value;
