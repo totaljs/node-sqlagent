@@ -187,10 +187,19 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 		if (can && typeof(value) === 'string') {
 			type = value[0];
-			value = parseInt(value.substring(1));
-			if (isNaN(value))
-				return self;
-		}
+			switch (type) {
+				case '+':
+				case '-':
+				case '*':
+				case '/':
+					value = value.substring(1).parseFloat();
+					break;
+				default:
+					type = '+';
+					value = value.parseFloat();
+					break;
+			}
+ 		}
 
 		if (!value)
 			return self;
