@@ -169,6 +169,9 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					value = value.parseFloat();
 					break;
 			}
+ 		} else {
+ 			type = '+';
+ 			value = 1;
  		}
 
 		if (!value)
@@ -183,20 +186,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-		var val = name[key];
-
-		if (can && typeof(val) === 'string') {
-			type = val[0];
-			val = parseInt(val.substring(1));
-			if (isNaN(val))
-				continue;
-		}
-
-		if (!val)
-			continue;
-
-		key = type + key;
-		self._set[key] = val === '$' ? '#00#' : val;
+		self.inc(key, name[key]);
 	}
 
 	return self;
