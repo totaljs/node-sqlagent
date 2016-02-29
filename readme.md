@@ -1208,7 +1208,7 @@ nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
 });
 
 // nosql.writeBuffer(id, buffer, filename, [metadata], callback)
-nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), function(err) {
+nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), 'petersirka.txt', function(err) {
     // Now is the buffer inserted    
 });
 
