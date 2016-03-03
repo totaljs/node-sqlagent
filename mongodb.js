@@ -39,7 +39,8 @@ SqlBuilder.prototype = {
 SqlBuilder.prototype.replace = function(builder) {
 	var self = this;
 
-	self.builder = builder.builder.slice(0);
+	self.builder = copy(builder.builder);
+	self.scope = builder.scope;
 
 	if (builder._order)
 		self._order = copy(builder._order);
@@ -60,6 +61,8 @@ SqlBuilder.prototype.replace = function(builder) {
 		self._fields = copy(builder._fields);
 
 	self._is = builder._is;
+	self._isfirst = builder._isfirst;
+
 	return self;
 };
 
@@ -896,7 +899,7 @@ Agent.prototype.insert = function(name, table) {
 
 		if (data.$inc) {
 
-			if (data.$set)
+			if (!data.$set)
 				data.$set = {};
 
 			Object.keys(data.$inc).forEach(function(key) {
