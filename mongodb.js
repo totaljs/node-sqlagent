@@ -1448,7 +1448,7 @@ Agent.prototype.readFile = function(id, callback) {
 			callback(null, fs, function() {
 				reader.close();
 				reader = null;
-			}, fs.metadata);
+			}, fs.metadata, fs.length, fs.filename);
 		});
 	});
 };
@@ -1470,7 +1470,7 @@ Agent.prototype.readStream = function(id, callback) {
 			}
 
 			var stream = fs.stream(true);
-			callback(null, stream, fs.metadata, fs.length);
+			callback(null, stream, fs.metadata, fs.length, fs.filename);
 			stream.on('close', function() {
 				reader.close();
 				reader = null;

@@ -1214,15 +1214,15 @@ nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), 'petersirk
     // Now is the buffer inserted    
 });
 
-// nosql.readFile(id, callback(err, gs, close, metadata))
-nosql.readFile(some_object_id, function(err, gs, close, metadata) {
+// nosql.readFile(id, callback(err, gs, close, metadata, size, filename))
+nosql.readFile(some_object_id, function(err, gs, close, metadata, size, filename) {
     // gs = GridStore
     // gs.stream(true);
     close();
 });
 
-// nosql.readStream(id, callback(err, stream, metadata, size))
-nosql.readStream(id, function(err, stream, metadata, size) {
+// nosql.readStream(id, callback(err, stream, metadata, size, filename))
+nosql.readStream(id, function(err, stream, metadata, size, filename) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
 });
 ```
