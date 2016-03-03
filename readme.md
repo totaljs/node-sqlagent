@@ -686,6 +686,8 @@ sql.exec();
 
 ### Expected values? No problem
 
+- __MongoDB__ supports expected values only in conditions.
+
 ```plain
 sql.expected(name, index, property); // gets a specific value from the array
 sql.expected(name, property);
