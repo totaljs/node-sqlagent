@@ -201,7 +201,8 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 			}
  		} else {
  			type = '+';
- 			value = 1;
+ 			if (!value)
+ 				value = 1;
  		}
 
 		if (!value)
