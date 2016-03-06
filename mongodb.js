@@ -960,7 +960,7 @@ Agent.prototype.select = function(name, table) {
 	return condition;
 };
 
-Agent.prototype.builder = function(name) {
+Agent.prototype.find = Agent.prototype.builder = function(name) {
 	var self = this;
 	for (var i = 0, length = self.command.length; i < length; i++) {
 		var command = self.command[i];
@@ -999,12 +999,15 @@ Agent.prototype.count = function(name, table, column) {
 		name = self.index++;
 	}
 
+	var condition = new SqlBuilder(0, 0, self);
+	condition.fields(column || '_id');
+
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
 		db.find(builder.builder).count(callback);
 	};
 
-	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: helper });
+	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
 	return condition;
 };
 
