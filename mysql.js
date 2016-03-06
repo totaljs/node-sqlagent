@@ -1145,7 +1145,7 @@ Agent.prototype.select = function(name, table, schema, without, skip, take) {
 	return condition;
 };
 
-Agent.prototype.builder = function(name) {
+Agent.prototype.find = Agent.prototype.builder = function(name) {
 	var self = this;
 	for (var i = 0, length = self.command.length; i < length; i++) {
 		var command = self.command[i];
