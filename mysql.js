@@ -1643,7 +1643,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		if (typeof(self.options) === 'string') {
 			var options = Parser.parse(self.options);
 			self.options = {};
-			self.options.host = options.host;
+			self.options.host = options.host.split(':')[0];
 			if (options.pathname && options.pathname.length > 1)
 				self.options.database = options.pathname.substring(1);
 			if (options.port)
