@@ -1,8 +1,10 @@
 var database = require('mongodb');
 var Events = require('events');
 var columns_cache = {};
-var NOOP = function(){};
 var CONNECTIONS = {};
+
+const NOOP = function(){};
+const PROJECTION = { _id: 1 };
 
 require('./index');
 
@@ -197,8 +199,8 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					break;
 			}
  		} else {
- 			type = '+';
- 			if (!value)
+	 		type = '+';
+ 			if (value === null || value === undefined)
  				value = 1;
  		}
 
@@ -219,7 +221,8 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-		self.inc(key, name[key]);
+		if (name[key])
+			self.inc(key, name[key]);
 	}
 
 	return self;
@@ -920,6 +923,57 @@ Agent.prototype.insert = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	return condition;
+};
+
+Agent.prototype.listing = function(name, table) {
+	var self = this;
+
+	if (typeof(table) !== 'string') {
+		table = name;
+		name = self.index++;
+	}
+
+	var condition = new SqlBuilder(0, 0, self);
+
+	var fn = function(db, builder, helper, callback) {
+
+		builder.prepare();
+
+		if (builder._isfirst)
+			console.warn('You can\'t use "builder.first()" for ".listing()".');
+
+		var cursor = db.find(builder.builder);
+		cursor.projects(PROJECTION);
+
+		cursor.count(function(err, count) {
+
+			if (err)
+				return callback(err);
+
+			var output = {};
+			output.count = count;
+			cursor = collection.find(builder.builder);
+
+			if (builder._fields)
+				cursor.project(builder._fields);
+			if (builder._order)
+				cursor.sort(builder._order);
+			if (builder._take)
+				cursor.limit(builder._take);
+			if (builder._skip)
+				cursor.skip(builder._skip);
+
+			cursor.toArray(function(err, docs) {
+				if (err)
+					return callback(err);
+				output.items = docs;
+				callback(null, output);
+			});
+		});
+	};
+
+	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
 	return condition;
 };
 

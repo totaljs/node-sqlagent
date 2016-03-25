@@ -201,7 +201,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 			}
  		} else {
  			type = '+';
- 			if (!value)
+ 			if (value === null || value === undefined)
  				value = 1;
  		}
 
@@ -217,7 +217,8 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-		self.inc(key, name[key]);
+		if (name[key])
+			self.inc(key, name[key]);
 	}
 
 	return self;
