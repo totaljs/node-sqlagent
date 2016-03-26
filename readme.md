@@ -119,6 +119,34 @@ sql.exec(function(err, response) {
 });
 ```
 
+### Listing
+
+```plain
+instance.listing([name], table)
+```
+
+- `name` (String) is an identificator for results, optional (default: internal indexer)
+- `table` (String) table name, the library automatically creates SQL query
+- __returns__ SqlBuilder
+
+```javascript
+sql.listing('users', 'tbl_user').make(function(builder) {
+    builder.where('id', '>', 5);
+    builder.page(10, 10);
+});
+
+sql.exec(function(err, response) {
+
+    // users will contain:
+    // .count --> count of all users according to the filter
+    // .items --> selected items
+
+    console.log(response.users.count);
+    console.log(response.users.items);
+});
+```
+
+
 ### Save
 
 ```plain
@@ -383,13 +411,13 @@ sql.exec();
 ```javascript
 instance.ifnot('user', function(error, response) {
     // error === ErrorBuilder
-    // It will be executed when the results won't be contain `user` property
+    // It will be executed when the results `user` contains a negative value or array.length === 0
     // Is executed in order
 });
 
 instance.ifexists('user', function(error, response) {
     // error === ErrorBuilder
-    // It will be executed when the results will contain `user` property
+    // It will be executed when the results `user` contains a positive value or array.length > 0
     // Is executed in order
 });
 ```
@@ -1147,9 +1175,9 @@ builder.fields('!COUNT(id) --> number'); // Raw field with casting: COUNT(id)::i
 #### builder.replace()
 
 ```plain
-builder.replace(builder)
+builder.replace(builder, [reference])
 ```
-replaces current instance of SqlBuilder with new.
+replaces current instance of SqlBuilder with new. The argument `reference` (default: `false`) when is `true` creates a reference to `builder` (it doesn't clone it). Better performance with lower memory.
 
 - `builder` (SqlBuilder) Another instance of SqlBuilder.
 

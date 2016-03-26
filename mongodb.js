@@ -38,29 +38,29 @@ SqlBuilder.prototype = {
 	}
 };
 
-SqlBuilder.prototype.replace = function(builder) {
+SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
-	self.builder = copy(builder.builder);
+	self.builder = reference ? builder.builder : copy(builder.builder);
 	self.scope = builder.scope;
 
 	if (builder._order)
-		self._order = copy(builder._order);
+		self._order = reference ? builder._order : copy(builder._order);
 
 	self._skip = builder._skip;
 	self._take = builder._take;
 
 	if (builder._set)
-		self._set = copy(builder._set);
+		self._set = reference ? builder._set : copy(builder._set);
 
 	if (builder._inc)
-		self._inc = copy(builder._inc);
+		self._inc = reference ? builder._inc : copy(builder._inc);
 
 	if (builder._prepare)
-		self._prepare = copy(builder._prepare);
+		self._prepare = reference ? builder._prepare : copy(builder._prepare);
 
 	if (builder._fields)
-		self._fields = copy(builder._fields);
+		self._fields = reference ? builder._fields : copy(builder._fields);
 
 	self._is = builder._is;
 	self._isfirst = builder._isfirst;
@@ -597,22 +597,9 @@ SqlBuilder.prototype.make = function(fn) {
 
 function Agent(name, error) {
 	this.connection = name;
-	this.command = [];
-	this.db = null;
-	this.done = null;
-	this.last = null;
-	this.id = null;
-	this.$id = null;
-	this.isCanceled = false;
-	this.index = 0;
-	this.isPut = false;
-	this.skipCount = 0;
-	this.skips = {};
 	this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
 	this.errors = this.isErrorBuilder ? error : null;
-	this.time;
-	this.$primary = 'id';
-	this.results = {};
+	this.clear();
 
 	// Hidden:
 	// this.$when;
@@ -654,6 +641,33 @@ Agent.connect = function(conn, callback) {
 	return function(error) {
 		return new Agent(conn, error);
 	};
+};
+
+Agent.prototype.clear = function() {
+	this.command = [];
+	this.db = null;
+	this.done = null;
+	this.last = null;
+	this.id = null;
+	this.$id = null;
+	this.isCanceled = false;
+	this.index = 0;
+	this.isPut = false;
+	this.skipCount = 0;
+	this.skips = {};
+	this.$primary = '_id';
+	this.results = {};
+	this.builders = {};
+
+	if (this.$when)
+		delete this.$when;
+
+	if (this.errors && this.isErrorBuilder)
+		this.errors.clear();
+	else if (this.errors)
+		this.errors = null;
+
+	return this;
 };
 
 Agent.prototype.when = function(name, fn) {
@@ -872,10 +886,14 @@ Agent.prototype.save = function(name, table, insert, maker) {
 	}
 
 	var self = this;
-	if (insert)
+	if (insert) {
 		maker(self.insert(name, table), true);
-	else
-		maker(self.update(name, table), false);
+		return self;
+	}
+
+	var builder = self.update(name, table);
+	builder.first();
+	maker(builder, false);
 
 	return self;
 };
@@ -923,6 +941,7 @@ Agent.prototype.insert = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -944,7 +963,8 @@ Agent.prototype.listing = function(name, table) {
 			console.warn('You can\'t use "builder.first()" for ".listing()".');
 
 		var cursor = db.find(builder.builder);
-		cursor.projects(PROJECTION);
+
+		cursor.project(PROJECTION);
 
 		cursor.count(function(err, count) {
 
@@ -953,7 +973,7 @@ Agent.prototype.listing = function(name, table) {
 
 			var output = {};
 			output.count = count;
-			cursor = collection.find(builder.builder);
+			cursor = db.find(builder.builder);
 
 			if (builder._fields)
 				cursor.project(builder._fields);
@@ -974,6 +994,7 @@ Agent.prototype.listing = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1011,16 +1032,12 @@ Agent.prototype.select = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
 Agent.prototype.find = Agent.prototype.builder = function(name) {
-	var self = this;
-	for (var i = 0, length = self.command.length; i < length; i++) {
-		var command = self.command[i];
-		if (command.name === name)
-			return command.values ? command.values : command.condition;
-	}
+	return this.builders[name];
 };
 
 Agent.prototype.exists = function(name, table) {
@@ -1042,6 +1059,7 @@ Agent.prototype.exists = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1062,6 +1080,7 @@ Agent.prototype.count = function(name, table, column) {
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1092,6 +1111,7 @@ Agent.prototype.max = function(name, table, column) {
 	condition.sort(column, true);
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: column });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1122,6 +1142,7 @@ Agent.prototype.min = function(name, table, column) {
 	condition.sort(column, false);
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: column });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1153,7 +1174,7 @@ Agent.prototype.update = function(name, table) {
 
 		if (builder._isfirst) {
 			db.updateOne(builder.builder, builder.data, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				callback(err, response ? (response.result.nModified || response.result.n) > 0 : false);
 			});
 		} else {
 			db.update(builder.builder, builder.data, { multi: true }, function(err, response) {
@@ -1163,6 +1184,7 @@ Agent.prototype.update = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1190,6 +1212,7 @@ Agent.prototype.delete = function(name, table) {
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1200,10 +1223,14 @@ Agent.prototype.remove = function(name, table) {
 Agent.prototype.ifnot = function(name, fn) {
 	var self = this;
 	self.prepare(function(error, response, resume) {
-		if (response[name])
+		var value = response[name];
+		if (value instanceof Array) {
+			if (value.length)
+				return resume();
+		} else if (value)
 			return resume();
 		fn.call(self, error, response);
-		resume();
+		setImmediate(resume);
 	});
 	return self;
 };
@@ -1211,10 +1238,16 @@ Agent.prototype.ifnot = function(name, fn) {
 Agent.prototype.ifexists = function(name, fn) {
 	var self = this;
 	self.prepare(function(error, response, resume) {
-		if (!response[name])
+
+		var value = response[name];
+		if (value instanceof Array) {
+			if (!value.length)
+				return resume();
+		} else if (!value)
 			return resume();
+
 		fn.call(self, error, response);
-		resume();
+		setImmediate(resume);
 	});
 	return self;
 };
@@ -1226,6 +1259,7 @@ Agent.prototype.destroy = function(name) {
 		if (item.name !== name)
 			continue;
 		self.command.splice(i, 1);
+		delete self.builders[name];
 		return true;
 	}
 	return false;

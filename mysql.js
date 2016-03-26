@@ -30,25 +30,25 @@ SqlBuilder.prototype = {
 	}
 };
 
-SqlBuilder.prototype.replace = function(builder) {
+SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
-	self.builder = builder.builder.slice(0);
+	self.builder = reference ? builder.builder : builder.builder.slice(0);
 
 	if (builder._order)
-		self._order = builder._order.slice(0);
+		self._order = reference ? builder._order : builder._order.slice(0);
 
 	self._skip = builder._skip;
 	self._take = builder._take;
 
 	if (builder._set)
-		self._set = copy(builder._set);
+		self._set = reference ? builder._set : copy(builder._set);
 
 	if (builder._fn)
-		self._fn = copy(builder._fn);
+		self._fn = reference ? builder._fn : copy(builder._fn);
 
 	if (builder._join)
-		self._join = builder._join.slice(0);
+		self._join = reference ? builder._join : builder._join.slice(0);
 
 	if (builder._fields)
 		self._fields = builder._fields;
@@ -564,7 +564,7 @@ SqlBuilder.prototype.sql = function(sql) {
 	return self;
 };
 
-SqlBuilder.prototype.toString = function(id) {
+SqlBuilder.prototype.toString = function(id, isCounter) {
 
 	var self = this;
 	var plus = '';
@@ -574,15 +574,17 @@ SqlBuilder.prototype.toString = function(id) {
 	if (self._join)
 		join = self._join.join(' ');
 
-	if (self._order)
-		order = ' ORDER BY ' + self._order.join(',');
+	if (!isCounter) {
+		if (self._order)
+			order = ' ORDER BY ' + self._order.join(',');
 
-	if (self._skip && self._take)
-		plus = ' LIMIT ' + self._skip + ',' + self._take;
-	else if (self._take)
-		plus = ' LIMIT ' + self._take;
-	else if (self._skip)
-		plus = ' LIMIT ' + self._skip + ',row_count';
+		if (self._skip && self._take)
+			plus = ' LIMIT ' + self._skip + ',' + self._take;
+		else if (self._take)
+			plus = ' LIMIT ' + self._take;
+		else if (self._skip)
+			plus = ' LIMIT ' + self._skip + ',row_count';
+	}
 
 	if (!self.builder.length)
 		return (join ? join + ' ' : '') + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
@@ -672,6 +674,7 @@ Agent.prototype.clear = function() {
 	this.skipCount = 0;
 	this.skips = {};
 	this.results = {};
+	this.builders = {};
 
 	if (this.$when)
 		delete this.$when;
@@ -750,10 +753,14 @@ Agent.prototype.prepare = function(fn) {
 Agent.prototype.ifnot = function(name, fn) {
 	var self = this;
 	self.prepare(function(error, response, resume) {
-		if (response[name])
+		var value = response[name];
+		if (value instanceof Array) {
+			if (value.length)
+				return resume();
+		} else if (value)
 			return resume();
 		fn.call(self, error, response);
-		resume();
+		setImmediate(resume);
 	});
 	return self;
 };
@@ -761,10 +768,16 @@ Agent.prototype.ifnot = function(name, fn) {
 Agent.prototype.ifexists = function(name, fn) {
 	var self = this;
 	self.prepare(function(error, response, resume) {
-		if (!response[name])
+
+		var value = response[name];
+		if (value instanceof Array) {
+			if (!value.length)
+				return resume();
+		} else if (!value)
 			return resume();
+
 		fn.call(self, error, response);
-		resume();
+		setImmediate(resume);
 	});
 	return self;
 };
@@ -783,7 +796,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', params: value, disable: value === undefined || value === null });
+	self.command.push({ type: 'put', value: value, disable: value === undefined || value === null });
 	return self;
 };
 
@@ -819,7 +832,8 @@ Agent.prototype.push = function(name, query, params) {
 	if (queries[query])
 		query = queries[query];
 
-	self.command.push({ name: name, query: query, params: params, first: isFIRST(query) });
+	self.command.push({ type: 'push', name: name, query: query, condition: params, first: isFIRST(query) });
+	self.builders[name] = params;
 	return is ? params : self;
 };
 
@@ -914,19 +928,12 @@ function prepareValue(value) {
 Agent.prototype._insert = function(item) {
 
 	var self = this;
-	var name = item.name;
-	var values = item.values;
-	var table = item.table;
-
-	if (values instanceof SqlBuilder)
-		values = values._set;
-
+	var values = item.condition._set;
 	var keys = Object.keys(values);
 
 	var columns = [];
 	var columns_values = [];
 	var params = [];
-	var index = 1;
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
@@ -935,9 +942,6 @@ Agent.prototype._insert = function(item) {
 		var isRAW = key[0] === '!';
 		if (isRAW)
 			key = key.substring(1);
-
-		if (item.without && item.without.indexOf(key) !== -1)
-			continue;
 
 		if (key[0] === '$')
 			continue;
@@ -965,7 +969,6 @@ Agent.prototype._insert = function(item) {
 		columns_values.push('?');
 
 		var type = typeof(value);
-
 		if (type === 'function')
 			value = value();
 
@@ -975,24 +978,20 @@ Agent.prototype._insert = function(item) {
 		params.push(value === undefined ? null : value);
 	}
 
-	return { type: item.type, name: name, query: 'INSERT INTO ' + table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ')', params: params, first: true };
+	item.$query = 'INSERT INTO ' + item.table + ' (' + columns.join(',') + ') VALUES(' + columns_values.join(',') + ')';
+	item.$params = params;
+	item.first = true;
+
+	return item;
 };
 
 Agent.prototype._update = function(item) {
 
-	var name = item.name;
-	var values = item.values;
-
-	if (values instanceof SqlBuilder)
-		values = values._set;
-
-	var condition = item.condition;
-	var table = item.table;
+	var values = item.condition._set;
 	var keys = Object.keys(values);
 
 	var columns = [];
 	var params = [];
-	var index = 1;
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
@@ -1001,9 +1000,6 @@ Agent.prototype._update = function(item) {
 		var isRAW = key[0] === '!';
 		if (isRAW)
 			key = key.substring(1);
-
-		if (item.without && item.without.indexOf(key) !== -1)
-			continue;
 
 		if (key[0] === '$')
 			continue;
@@ -1052,15 +1048,36 @@ Agent.prototype._update = function(item) {
 			params.push(value === undefined ? null : value);
 	}
 
-	return { type: item.type, name: name, query: 'UPDATE ' + table + ' SET ' + columns.join(',') + condition.toString(this.id), params: params, first: true, column: 'affectedRows' };
+	item.$query = 'UPDATE ' + item.table + ' SET ' + columns.join(',') + item.condition.toString(this.id);
+	item.$params = params;
+	item.column = 'affectedRows';
+	item.first = true;
+
+	return item;
 };
 
 Agent.prototype._select = function(item) {
-	return { name: item.name, query: item.condition.toQuery(item.query) + item.condition.toString(this.id), params: null, first: item.condition._take === 1, datatype: item.datatype };
+	item.query = 'SELECT * FROM ' + item.table;
+	item.$query = item.condition.toQuery(item.query) + item.condition.toString(this.id);
+	item.first = item.condition._take === 1;
+	return item;
 };
 
 Agent.prototype._delete = function(item) {
-	return { name: item.name, query: item.query + item.condition.toString(this.id), params: null, first: true };
+	item.$query = item.query + item.condition.toString(this.id);
+	item.first = true;
+	item.column = 'affectedRows';
+	return item;
+};
+
+Agent.prototype._query = function(item) {
+	if (item.condition instanceof SqlBuilder) {
+		item.$query = (item.scalar ? item.query : item.condition.toQuery(item.query)) + item.condition.toString(this.id, item.scalar);
+		return item;
+	}
+	item.$query = item.query;
+	item.$params = item.condition;
+	return item;
 };
 
 Agent.prototype.save = function(name, table, insert, maker) {
@@ -1081,78 +1098,58 @@ Agent.prototype.save = function(name, table, insert, maker) {
 	return self;
 };
 
-Agent.prototype.insert = function(name, table, values, without) {
+Agent.prototype.insert = function(name, table) {
 
 	var self = this;
 
 	if (typeof(table) !== 'string') {
-		without = values;
-		values = table;
 		table = name;
 		name = self.index++;
 	}
 
-	if (values instanceof Array) {
-		var tmp = without;
-		without = values;
-		values = tmp;
-	}
-
-	var is = false;
-	if (!values) {
-		is = true;
-		values = new SqlBuilder(0, 0, self);
-	}
-
-	self.command.push({ type: 'insert', table: table, name: name, values: values, without: without });
-	return is ? values : self;
+	var condition = new SqlBuilder(0, 0, self);
+	self.command.push({ type: 'insert', table: table, name: name, condition: condition });
+	self.builders[name] = condition;
+	return condition;
 };
 
-Agent.prototype.select = function(name, table, schema, without, skip, take) {
+Agent.prototype.select = function(name, table) {
 
 	var self = this;
+
 	if (typeof(table) !== 'string') {
-		take = skip;
-		skip = without;
-		without = schema;
-		schema = table;
 		table = name;
 		name = self.index++;
 	}
 
-	if (!schema)
-		schema = '*';
+	var condition = new SqlBuilder(0, 0, self);
+	self.command.push({ type: 'select', name: name, table: table, condition: condition });
+	self.builders[name] = condition;
+	return condition;
+};
 
-	var condition = new SqlBuilder(skip, take, self);
-	var columns;
+Agent.prototype.listing = function(name, table, column) {
 
-	if (schema instanceof Array) {
-		columns = schema;
-	} else if (typeof(schema) === 'string') {
-		columns = [schema];
-	} else {
-		columns = [];
-		var arr = Object.keys(schema);
-		for (var i = 0, length = arr.length; i < length; i++) {
-			if (without && without.indexOf(arr[i]) !== -1)
-				continue;
-			if (arr[i][0] === '$')
-				continue;
-			columns.push(SqlBuilder.column(arr[i]));
-		}
+	var self = this;
+	if (typeof(table) !== 'string') {
+		table = name;
+		name = self.index++;
 	}
 
-	self.command.push({ type: 'select', query: 'SELECT ' + columns.join(',') + ' FROM ' + table, name: name, without: without, condition: condition });
+	var key ='$listing_' + name;
+
+	if (!column)
+		column = '*';
+
+	var condition = new SqlBuilder(0, 0, self);
+	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: key + '_count', condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.command.push({ type: 'select', name: key + '_items', table: table, condition: condition, listing: key, target: name });
+	self.builders[name] = condition;
 	return condition;
 };
 
 Agent.prototype.find = Agent.prototype.builder = function(name) {
-	var self = this;
-	for (var i = 0, length = self.command.length; i < length; i++) {
-		var command = self.command[i];
-		if (command.name === name)
-			return command.values ? command.values : command.condition;
-	}
+	return this.builders[name];
 };
 
 Agent.prototype.exists = function(name, table) {
@@ -1165,7 +1162,8 @@ Agent.prototype.exists = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	condition.first();
-	self.command.push({ type: 'query', query: 'SELECT 1 as sqlagentcolumn_e FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn_e' });
+	self.command.push({ type: 'query', query: 'SELECT 1 as sqlagentcolumn_e FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn_e', scalar: true });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1181,7 +1179,8 @@ Agent.prototype.count = function(name, table, column) {
 		column = '*';
 
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
+	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1193,7 +1192,8 @@ Agent.prototype.max = function(name, table, column) {
 	}
 
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
+	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1205,7 +1205,8 @@ Agent.prototype.min = function(name, table, column) {
 	}
 
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT MAX(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
+	self.command.push({ type: 'query', query: 'SELECT MIN(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1217,53 +1218,23 @@ Agent.prototype.avg = function(name, table, column) {
 	}
 
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1 });
+	self.command.push({ type: 'query', query: 'SELECT AVG(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.builders[name] = condition;
 	return condition;
 };
 
-Agent.prototype.updateOnly = function(name, table, values, only) {
-
-	var model = {};
-
-	if (values instanceof SqlBuilder)
-		values = values._set;
-
-	for (var i = 0, length = only.length; i < length; i++) {
-		var key = only[i];
-		model[key] = values[i] === undefined ? null : values[i];
-	}
-
-	return this.update(name, table, model, null);
-};
-
-Agent.prototype.update = function(name, table, values, without) {
+Agent.prototype.update = function(name, table) {
 
 	var self = this;
 
 	if (typeof(table) !== 'string') {
-		without = values;
-		values = table;
 		table = name;
 		name = self.index++;
 	}
 
-	if (values instanceof Array) {
-		var tmp = without;
-		without = values;
-		values = tmp;
-	}
-
-	var condition;
-
-	if (values instanceof SqlBuilder)
-		condition = values;
-	else
-		condition = new SqlBuilder(0, 0, self);
-
-	if (!values)
-		values = condition;
-
-	self.command.push({ type: 'update', table: table, name: name, values: values, without: without, condition: condition });
+	var condition = new SqlBuilder(0, 0, self);
+	self.command.push({ type: 'update', table: table, name: name, condition: condition });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1278,6 +1249,7 @@ Agent.prototype.delete = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	self.command.push({ type: 'delete', query: 'DELETE FROM ' + table, name: name, condition: condition });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1292,6 +1264,7 @@ Agent.prototype.destroy = function(name) {
 		if (item.name !== name)
 			continue;
 		self.command.splice(i, 1);
+		delete self.builders[name];
 		return true;
 	}
 	return false;
@@ -1441,7 +1414,7 @@ Agent.prototype._prepare = function(callback) {
 			if (item.disable)
 				self.$id = null;
 			else
-				self.$id = typeof(item.params) === 'function' ? item.params() : item.params;
+				self.$id = typeof(item.value) === 'function' ? item.value() : item.value;
 			self.isPut = !self.disable;
 			next();
 			return;
@@ -1460,80 +1433,39 @@ Agent.prototype._prepare = function(callback) {
 			}
 		}
 
-		var current;
-
 		switch (item.type) {
 			case 'update':
-				current = self._update(item);
+				self._update(item);
 				break;
 			case 'insert':
-				current = self._insert(item);
+				self._insert(item);
 				break;
 			case 'select':
-				current = self._select(item);
+				self._select(item);
 				break;
 			case 'delete':
-				current = self._delete(item);
+				self._delete(item);
 				break;
 			default:
-				current = item;
+				self._query(item);
 				break;
 		}
 
-		if (current.params instanceof SqlBuilder) {
-			current.query = current.query + current.params.toString(self.$id);
-			current.params = undefined;
-		} else
-			current.params = prepare_params(current.params);
-
-		if (current.condition instanceof SqlBuilder)
-			current.query = current.query + current.condition.toString(self.id);
-
-		var query = function(err, rows) {
-
-			if (err) {
-				self.errors.push(current.name + ': ' + err.message);
-				if (self.isTransaction)
-					self.isRollback = true;
-			} else {
-
-				if (current.type === 'insert') {
-					self.id = rows.insertId;
-					if (!self.isPut)
-						self.$id = self.id;
-					rows.identity = self.id;
-				}
-
-				if (current.first && current.column) {
-					var tmp = rows instanceof Array ? rows.length ? rows[0] : null : rows;
-					if (tmp)
-						self.results[current.name] = current.column === 'sqlagentcolumn_e' ? true : current.datatype === 1 ? parseFloat(tmp[current.column] || 0) : tmp[current.column];
-				} else if (current.first)
-					self.results[current.name] = rows instanceof Array ? rows[0] : rows;
-				else
-					self.results[current.name] = rows;
-				self.emit('data', current.name, self.results);
-				if (self.$when) {
-					var tmp = self.$when[current.name];
-					if (tmp) {
-						for (var i = 0, length = tmp.length; i < length; i++)
-							tmp[i](self.errors, self.results);
-					}
-				}
-			}
-			self.last = item.name;
-			next();
-		};
-
 		if (item.type !== 'begin' && item.type !== 'end') {
-			if (!current.first)
-				current.first = isFIRST(current.query);
+
+			if (!item.first)
+				item.first = isFIRST(item.$query);
 
 			if (Agent.debug)
-				console.log(self.debugname, current.name, current.query);
+				console.log(self.debugname, item.name, item.$query);
 
-			self.emit('query', current.name, current.query, current.params);
-			self.db.query(current.query, current.params, query);
+			self.emit('query', item.name, item.$query, item.$params);
+
+			self.db.query(item.$query, item.$params, function(err, rows) {
+				self.$bind(item, err, rows);
+				next();
+			});
+
 			return;
 		}
 
@@ -1615,6 +1547,58 @@ Agent.prototype._prepare = function(callback) {
 	});
 
 	return self;
+};
+
+Agent.prototype.$bindwhen = function(name) {
+	var self = this;
+	if (!self.$when)
+		return self;
+	var tmp = self.$when(name);
+	if (!tmp)
+		return self;
+	for (var i = 0, length = tmp.length; i < length; i++)
+		tmp[i](self.errors, self.results);
+	return self;
+};
+
+Agent.prototype.$bind = function(item, err, rows) {
+
+	var self = this;
+
+	if (err) {
+		self.errors.push(item.name + ': ' + err.message);
+		if (self.isTransaction)
+			self.isRollback = true;
+		self.last = item.name;
+		return;
+	}
+
+	if (item.type === 'insert') {
+		self.id = rows.insertId;
+		if (!self.isPut)
+			self.$id = self.id;
+		self.results[item.name] = { identity: self.id };
+	} else if (item.first && item.column) {
+		var tmp = rows instanceof Array ? rows.length ? rows[0] : null : rows;
+		if (tmp)
+			self.results[item.name] = item.column === 'sqlagentcolumn_e' ? true : item.datatype === 1 ? parseFloat(tmp[item.column] || 0) : tmp[item.column];
+	} else if (item.first)
+		self.results[item.name] = rows instanceof Array ? rows[0] : rows;
+	else
+		self.results[item.name] = rows;
+
+	if (item.listing) {
+		var obj = {};
+		obj.count = self.results[item.listing + '_count'];
+		obj.items = self.results[item.listing + '_items'];
+		self.results[item.target] = obj;
+		self.results[item.listing + '_count'] = null;
+		self.results[item.listing + '_items'] = null;
+	}
+
+	self.emit('data', item.target || item.name, self.results);
+	self.last = item.name;
+	self.$bindwhen(item.name);
 };
 
 Agent.prototype.exec = function(callback, returnIndex) {
