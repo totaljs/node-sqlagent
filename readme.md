@@ -119,6 +119,37 @@ sql.exec(function(err, response) {
 });
 ```
 
+### Push (only for MongoDB)
+
+```plain
+instance.push([name], collection, fn(collection, callback(err, response))
+```
+
+```javascript
+sql.push('users', 'users', function(collection, callback) {
+
+    var $group = {};
+    $group._id = {};
+    $group._id = '$category';
+    $group.count = { $sum: 1 };
+
+    var $match = {};
+    $match.isremoved = false;
+
+    var pipeline = [];
+    pipeline.push({ $match: $match });
+    pipeline.push({ $group: $group });
+
+    collection.aggregate(pipeline, callback);    
+});
+
+// OR
+
+sql.push('users', 'users', function(collection, callback) {
+    collection.findOne({ name: 'Peter' }, { name: 1, age: 1 }).toArray(callback); 
+});
+```
+
 ### Listing
 
 ```plain
@@ -314,6 +345,34 @@ exists.where('id', 35);
 
 sql.exec(function(err, response) {
     console.log(response.user); // response.user === Boolean (in correct case otherwise undefined)
+});
+```
+
+### Compare
+
+```plain
+instance.compare([name], table, value, [keys])
+```
+
+- the module compares values between DB and `value`
+- the response can be `false` or `{ diff: ['name'], record: Object, value: Object }`
+- works with `sql.ifexists()` and `sql.ifnot()`
+- __returns__ SqlBuilder
+
+```javascript
+var compare = sql.compare('user', 'tbl_user', { name: 'Peter', age: 33 });
+// OR: var compare = sql.compare('user', 'tbl_user', { name: 'Peter', age: 33 }, ['name']); --> compares only name field
+// OR: compare.fields('name', 'age'); --> compares these fields (if aren't defined "keys")
+
+compare.where('id', 35);
+
+sql.exec(function(err, response) {
+
+    if (response.user) {
+        // shows the property names which were changed
+        console.log(response.user.diff);
+    }
+
 });
 ```
 

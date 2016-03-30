@@ -1036,6 +1036,57 @@ Agent.prototype.select = function(name, table) {
 	return condition;
 };
 
+Agent.prototype.compare = function(name, table, obj, keys) {
+
+	var self = this;
+
+	if (typeof(table) !== 'string') {
+		keys = obj;
+		obj = table;
+		table = name;
+		name = self.index++;
+	}
+
+	var condition = new SqlBuilder(0, 0, self);
+	condition.first();
+
+	var fn = function(db, builder, helper, callback) {
+
+		var prop = keys ? keys : builder._fields ? Object.keys(builder._fields) : Object.keys(obj);
+
+		if (!builder._fields)
+			builder.fields.apply(builder, prop);
+
+		builder.prepare();
+		db.findOne(builder.builder, builder._fields, function(err, doc) {
+
+			if (err)
+				return callback(err);
+
+			var val = doc;
+			var diff;
+
+			if (val) {
+				diff = [];
+				for (var i = 0, length = prop.length; i < length; i++) {
+					var key = prop[i];
+					var a = val[key];
+					var b = obj[key];
+					if (a !== b)
+						diff.push(key);
+				}
+			} else
+				diff = prop;
+
+			callback(null, diff.length ? { diff: diff, record: val, value: obj } : false);
+		});
+	};
+
+	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
+	return condition;
+};
+
 Agent.prototype.find = Agent.prototype.builder = function(name) {
 	return this.builders[name];
 };

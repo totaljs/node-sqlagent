@@ -1100,6 +1100,18 @@ Agent.prototype._select = function(item) {
 	return item;
 };
 
+Agent.prototype._compare = function(item) {
+	var keys = item.keys ? item.keys : item.condition._fields ? item.condition._fields.split(',') : Object.keys(item.value);
+
+	if (!item.condition._fields)
+		item.condition.fields.apply(item.condition, keys);
+
+	item.query = 'SELECT * FROM ' + item.table;
+	item.$query = item.condition.toQuery(item.query) + item.condition.toString(this.id);
+	item.first = item.condition._take === 1;
+	return item;
+};
+
 Agent.prototype._delete = function(item) {
 	item.$query = 'WITH rows AS (' + item.query + item.condition.toString(this.id, true) + ' RETURNING 1) SELECT count(*)::int as "count" FROM rows';
 	item.column = 'count';
@@ -1151,6 +1163,24 @@ Agent.prototype.select = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	self.command.push({ type: 'select', name: name, table: table, condition: condition });
+	self.builders[name] = condition;
+	return condition;
+};
+
+Agent.prototype.compare = function(name, table, obj, keys) {
+
+	var self = this;
+
+	if (typeof(table) !== 'string') {
+		keys = obj;
+		obj = table;
+		table = name;
+		name = self.index++;
+	}
+
+	var condition = new SqlBuilder(0, 0, self);
+	condition.first();
+	self.command.push({ type: 'compare', name: name, table: table, condition: condition, value: obj, keys: keys });
 	self.builders[name] = condition;
 	return condition;
 };
@@ -1472,17 +1502,20 @@ Agent.prototype._prepare = function(callback) {
 		}
 
 		switch (item.type) {
+			case 'select':
+				self._select(item);
+				break;
 			case 'update':
 				self._update(item);
 				break;
 			case 'insert':
 				self._insert(item);
 				break;
-			case 'select':
-				self._select(item);
-				break;
 			case 'delete':
 				self._delete(item);
+				break;
+			case 'compare':
+				self._compare(item);
 				break;
 			default:
 				self._query(item);
@@ -1655,6 +1688,25 @@ Agent.prototype.$bind = function(item, err, rows) {
 		self.results[item.target] = obj;
 		self.results[item.listing + '_count'] = null;
 		self.results[item.listing + '_items'] = null;
+	} else if (item.type === 'compare') {
+
+		var keys = item.keys;
+		var val = self.results[item.name];
+		var diff;
+
+		if (val) {
+			diff = [];
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				var a = val[key];
+				var b = item.value[key];
+				if (a != b)
+					diff.push(key);
+			}
+		} else
+			diff = keys;
+
+		self.results[item.name] = diff.length ? { diff: diff, record: val, value: item.value } : false;
 	}
 
 	self.emit('data', item.target || item.name, self.results);
