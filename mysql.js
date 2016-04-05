@@ -1586,11 +1586,11 @@ Agent.prototype.$bindwhen = function(name) {
 	var self = this;
 	if (!self.$when)
 		return self;
-	var tmp = self.$when(name);
+	var tmp = self.$when[name];
 	if (!tmp)
 		return self;
 	for (var i = 0, length = tmp.length; i < length; i++)
-		tmp[i](self.errors, self.results);
+		tmp[i](self.errors, self.results, self.results[name]);
 	return self;
 };
 

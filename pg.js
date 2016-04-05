@@ -1624,11 +1624,11 @@ Agent.prototype.$bindwhen = function(name) {
 	var self = this;
 	if (!self.$when)
 		return self;
-	var tmp = self.$when(name);
+	var tmp = self.$when[name];
 	if (!tmp)
 		return self;
 	for (var i = 0, length = tmp.length; i < length; i++)
-		tmp[i](self.errors, self.results);
+		tmp[i](self.errors, self.results, self.results[name]);
 	return self;
 };
 
@@ -1649,7 +1649,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 			self.id = null;
 			if (!self.isPut)
 				self.$id = self.id;
-		} else if (!item.$first)
+		} else if (!item.first)
 			self.results[item.name] = EMPTYARRAY;
 		self.emit('data', item.name, self.results);
 		self.last = item.name;

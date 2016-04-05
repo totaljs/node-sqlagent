@@ -1478,7 +1478,7 @@ Agent.prototype._prepare = function(callback) {
 			var tmp = self.$when[item.name];
 			if (tmp) {
 				for (var i = 0, length = tmp.length; i < length; i++)
-					tmp[i](self.errors, self.results);
+					tmp[i](self.errors, self.results, self.results[item.name]);
 			}
 			next();
 		});
