@@ -93,9 +93,8 @@ SqlBuilder.prototype.join = function(name, on, type) {
 	if (!type)
 		type = 'left'
 
-
 	if (self._schema && name.lastIndexOf(' ') === -1)
-		name += ' ' + self._schema;
+		name = self._schema + '.' + name + ' as ' + name;
 
 	self._join.push(type + ' join ' + name + ' on ' + on);
 	return self;
