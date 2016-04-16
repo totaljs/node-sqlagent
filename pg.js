@@ -91,7 +91,7 @@ SqlBuilder.prototype.join = function(name, on, type) {
 		self._join = [];
 
 	if (!type)
-		type = 'left'
+		type = 'left';
 
 	self._join.push(type + ' join ' + name + ' on ' + on);
 	return self;
