@@ -599,7 +599,7 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 	}
 
 	if (!self.builder.length)
-		return (join ? join + ' ' : '') + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
+		return (join ? ' ' + join : '') + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
 
 	var where = self.builder.join(' ');
 
