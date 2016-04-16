@@ -1199,7 +1199,7 @@ sql.exec();
 ```plain
 builder.schema()
 ```
-sets current schema for `join`, `where`, `in`, `between`, `field`, `fields`, `like`
+sets current schema for `where`, `in`, `between`, `field`, `fields`, `like`
 
 ```javascript
 builder.schema('b');
