@@ -974,6 +974,14 @@ adds sorting
 - `name` (String) column name
 - `desc` (Boolean), default: false
 
+#### builder.random()
+
+```plain
+builder.random()
+```
+
+Reads random rows. __IMPORTANT__: MongoDB doesn't support this feature.
+
 ---
 
 #### builder.skip()

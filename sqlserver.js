@@ -210,6 +210,14 @@ SqlBuilder.prototype.sort = function(name, desc) {
 	return this.order(name, desc);
 };
 
+SqlBuilder.prototype.random = function() {
+	var self = this;
+	if (!self._order)
+		self._order = [];
+	self._order.push('NEWID()');
+	return self;
+};
+
 SqlBuilder.prototype.order = function(name, desc) {
 
 	var self = this;
@@ -235,6 +243,14 @@ SqlBuilder.prototype.order = function(name, desc) {
 
 	columns_cache[key] = SqlBuilder.column(name, self._schema) + ' ' + desc;
 	self._order.push(columns_cache[key]);
+	return self;
+};
+
+SqlBuilder.prototype.random = function() {
+	var self = this;
+	if (!self._order)
+		self._order = [];
+	self._order.push('RAND()');
 	return self;
 };
 

@@ -298,6 +298,14 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 	return self;
 };
 
+SqlBuilder.prototype.random = function() {
+	var self = this;
+	if (!self._order)
+		self._order = [];
+	self._order.push('RAND()');
+	return self;
+};
+
 SqlBuilder.prototype.checkOperator = function() {
 	var self = this;
 	if (!self.hasOperator)

@@ -259,6 +259,11 @@ SqlBuilder.prototype.order = function(name, desc) {
 	return self;
 };
 
+SqlBuilder.prototype.random = function() {
+	console.log('SqlBuilder.random() is not supported.');
+	return this;
+};
+
 SqlBuilder.prototype.skip = function(value) {
 	var self = this;
 	self._skip = self.parseInt(value);

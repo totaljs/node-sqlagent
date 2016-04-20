@@ -255,6 +255,14 @@ SqlBuilder.prototype.order = function(name, desc) {
 	return self;
 };
 
+SqlBuilder.prototype.random = function() {
+	var self = this;
+	if (!self._order)
+		self._order = [];
+	self._order.push('RANDOM()');
+	return self;
+};
+
 SqlBuilder.prototype.skip = function(value) {
 	var self = this;
 	self._skip = self.parseInt(value);
