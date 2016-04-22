@@ -923,9 +923,6 @@ function prepareValue(value) {
 	if (type === 'function')
 		return value();
 
-	if (type === 'string')
-		return value.trim();
-
 	return value;
 }
 
