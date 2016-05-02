@@ -1900,7 +1900,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 					done();
 				});
 
-				callback(null, stream, size);
+				callback(null, stream, parseInt(size));
 			});
 		});
 	});
