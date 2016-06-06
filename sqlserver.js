@@ -1785,7 +1785,10 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
 	self.db = new database.Connection(self.options, function(err) {
 		if (err) {
-			callback.call(self, err, {});
+			if (!self.errors)
+				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
+			self.errors.push(err);
+			callback.call(self, self.errors);
 			return;
 		}
 		self._prepare(callback);

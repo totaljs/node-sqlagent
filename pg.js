@@ -4,6 +4,7 @@ var queries = {};
 var columns_cache = {};
 const EMPTYARRAY = [];
 
+database.defaults.poolIdleTimeout = 10;
 Object.freeze(EMPTYARRAY);
 
 require('./index');
@@ -1596,6 +1597,7 @@ Agent.prototype._prepare = function(callback) {
 		}
 
 	}, function() {
+
 		self.time = Date.now() - self.debugtime;
 		self.index = 0;
 		if (self.done)
@@ -1741,7 +1743,10 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
-			callback.call(self, err, {});
+			if (!self.errors)
+				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
+			self.errors.push(err);
+			callback.call(self, self.errors);
 			return;
 		}
 

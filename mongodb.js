@@ -1538,11 +1538,15 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		console.log(self.debugname, '----- exec');
 
 	connect(self.connection, function(err, db) {
+
 		if (err) {
-			if (callback)
-				return callback.call(self, err, {});
-			throw err;
+			if (!self.errors)
+				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
+			self.errors.push(err);
+			callback.call(self, self.errors);
+			return;
 		}
+
 		self.db = db;
 		self._prepare(callback);
 	});

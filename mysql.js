@@ -1699,7 +1699,10 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	pools_cache[self.$conn].getConnection(function(err, connection) {
 
 		if (err) {
-			callback.call(self, err, {});
+			if (!self.errors)
+				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
+			self.errors.push(err);
+			callback.call(self, self.errors);
 			return;
 		}
 
