@@ -1,8 +1,7 @@
-var database = require('mongodb');
-var Events = require('events');
-var columns_cache = {};
-var CONNECTIONS = {};
-
+const database = require('mongodb');
+const Events = require('events');
+const columns_cache = {};
+const CONNECTIONS = {};
 const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 

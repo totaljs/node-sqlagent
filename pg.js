@@ -1,7 +1,9 @@
-var database = require('pg');
-var Events = require('events');
-var queries = {};
-var columns_cache = {};
+require('total.js');
+const database = require('pg');
+const lo = require('./pg-lo');
+const Events = require('events');
+const queries = {};
+const columns_cache = {};
 const EMPTYARRAY = [];
 
 database.defaults.poolIdleTimeout = 10;
@@ -1786,29 +1788,24 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 			return;
 		}
 
-		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
-		var man = new LargeObjectManager(client);
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
-				client.query('ROLLBACK');
 				done();
 				callback(err);
 				return;
 			}
 
-			man.createAndWritableStream(buffersize || 16384, function(err, oid, stream) {
+			lo.create(client).writeStream(buffersize || 16384, function(err, oid, stream) {
 
 				if (err) {
-   					client.query('ROLLBACK');
-					done();
+					client.query('ROLLBACK', done);
 					callback(err);
 					return;
 				}
 
 				stream.on('finish', function() {
-					client.query('COMMIT');
-					done();
+					client.query('COMMIT', done);
 					callback(null, oid);
 				});
 
@@ -1831,30 +1828,24 @@ Agent.prototype.writeBuffer = function(buffer, callback) {
 			return;
 		}
 
-		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
-		var man = new LargeObjectManager(client);
-
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
-				client.query('ROLLBACK');
 				done();
 				callback(err);
 				return;
 			}
 
-			man.createAndWritableStream(buffer.length, function(err, oid, stream) {
+			lo.create(client).createAndWritableStream(buffer.length, function(err, oid, stream) {
 
 				if (err) {
-					client.query('ROLLBACK');
-					done();
+					client.query('ROLLBACK', done);
 					callback(err);
 					return;
 				}
 
 				stream.on('finish', function() {
-					client.query('COMMIT');
-					done();
+					client.query('COMMIT', done);
 					callback(null, oid);
 				});
 
@@ -1880,30 +1871,24 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 			return;
 		}
 
-		var LargeObjectManager = require('pg-large-object').LargeObjectManager;
-		var man = new LargeObjectManager(client);
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
-				client.query('ROLLBACK');
 				done();
 				callback(err);
 				return;
 			}
 
-			man.openAndReadableStream(oid, buffersize || 16384, function(err, size, stream) {
+			lo.create(client).readStream(oid, buffersize || 16384, function(err, size, stream) {
 
 				if (err) {
-					client.query('ROLLBACK');
 					done();
 					callback(err);
 					return;
 				}
 
-				stream.on('end', function() {
-					client.query('COMMIT');
-					done();
-				});
+				stream.on('error', () => client.query('COMMIT', done));
+				stream.on('end', () => client.query('COMMIT', done));
 
 				callback(null, stream, parseInt(size));
 			});

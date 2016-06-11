@@ -3,9 +3,8 @@ Array.prototype.sqlagent = function(onItem, callback) {
 	var self = this;
 	var item = self.shift();
 
-	if (item === undefined) {
-		if (callback)
-			callback();
+	if (!item) {
+		callback();
 		return self;
 	}
 
@@ -13,14 +12,11 @@ Array.prototype.sqlagent = function(onItem, callback) {
 
 		if (val === false) {
 			self.length = 0;
-			if (callback)
-				callback();
+			callback();
 			return;
 		}
 
-		setImmediate(function() {
-			self.sqlagent(onItem, callback);
-		});
+		setImmediate(() => self.sqlagent(onItem, callback));
 	});
 
 	return self;

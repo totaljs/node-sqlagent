@@ -1,9 +1,9 @@
-var database = require('mysql');
-var Events = require('events');
-var Parser = require('url');
-var queries = {};
-var columns_cache = {};
-var pools_cache = {};
+const database = require('mysql');
+const Events = require('events');
+const Parser = require('url');
+const queries = {};
+const columns_cache = {};
+const pools_cache = {};
 
 require('./index');
 

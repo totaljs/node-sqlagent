@@ -1264,7 +1264,6 @@ creates escaped SQL query (internal)
 
 ### PostgreSQL
 
-- `npm install pg-large-object`
 - all file operations are executed just-in-time (you don't need to call `sql.exec()`)
 - all file operations aren't executed in queue
 
