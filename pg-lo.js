@@ -217,9 +217,9 @@ var WriteStream = function(largeObject, bufferSize) {
 
 WriteStream.prototype = Object.create(Stream.Writable.prototype);
 WriteStream.prototype._write = function(chunk, encoding, callback) {
-	if (Buffer.isBuffer(chunk))
-		this._largeObject.write(chunk, callback);
-	throw "Illegal Argument";
+	if (!Buffer.isBuffer(chunk))
+		throw "Illegal Argument";
+	this._largeObject.write(chunk, callback);
 };
 
 var ReadStream = function(largeObject, bufferSize) {
