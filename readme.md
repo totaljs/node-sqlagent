@@ -716,6 +716,19 @@ sql.validate('error-orders-empty');
 sql.validate('error-users-empty', 'users');
 ```
 
+### Escaping values
+
+- doesn't work with MongoDB
+
+```javascript
+var escaped1 = Agent.escape(value);
+
+// or ...
+
+var sql = new Agent();
+var escaped2 = sql.escape(value);
+```
+
 ### Predefined queries
 
 - doesn't work with MongoDB

@@ -1925,5 +1925,39 @@ Agent.init = function(conn, debug) {
 	};
 };
 
+Agent.escape = Agent.prototype.escape = SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
+
+	if (value == null)
+		return 'null';
+
+	var type = typeof(value);
+
+	if (type === 'function') {
+		value = value();
+
+		if (value == null)
+			return 'null';
+
+		type = typeof(value);
+	}
+
+	if (type === 'boolean')
+		return value === true ? '1' : '0';
+
+	if (type === 'number')
+		return value.toString();
+
+	if (type === 'string')
+		return SqlBuilder.escaper(value);
+
+	if (value instanceof Array)
+		return SqlBuilder.escaper(value.join(','));
+
+	if (value instanceof Date)
+		return dateToString(value);
+
+	return SqlBuilder.escaper(value.toString());
+};
+
 module.exports = Agent;
 global.SqlBuilder = SqlBuilder;

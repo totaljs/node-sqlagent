@@ -354,40 +354,6 @@ SqlBuilder.prototype.field = function(name) {
 	return self;
 };
 
-SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
-
-	if (value == null)
-		return 'null';
-
-	var type = typeof(value);
-
-	if (type === 'function') {
-		value = value();
-
-		if (value == null)
-			return 'null';
-
-		type = typeof(value);
-	}
-
-	if (type === 'boolean')
-		return value === true ? '1' : '0';
-
-	if (type === 'number')
-		return value.toString();
-
-	if (type === 'string')
-		return database.escape(value);
-
-	if (value instanceof Array)
-		return database.escape(value.join(','));
-
-	if (value instanceof Date)
-		return database.escape(dateToString(value));
-
-	return database.escape(value.toString());
-};
-
 SqlBuilder.column = function(name, schema) {
 
 	var cachekey = (schema ? schema + '.' : '') + name;
@@ -1728,7 +1694,41 @@ Agent.prototype.$$exec = function(returnIndex) {
 	return function(callback) {
 		return self.exec(callback, returnIndex);
 	}
-}
+};
+
+Agent.escape = Agent.prototype.escape = SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
+
+	if (value == null)
+		return 'null';
+
+	var type = typeof(value);
+
+	if (type === 'function') {
+		value = value();
+
+		if (value == null)
+			return 'null';
+
+		type = typeof(value);
+	}
+
+	if (type === 'boolean')
+		return value === true ? '1' : '0';
+
+	if (type === 'number')
+		return value.toString();
+
+	if (type === 'string')
+		return database.escape(value);
+
+	if (value instanceof Array)
+		return database.escape(value.join(','));
+
+	if (value instanceof Date)
+		return database.escape(dateToString(value));
+
+	return database.escape(value.toString());
+};
 
 function dateToString(dt) {
 	var arr = [];

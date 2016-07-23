@@ -364,39 +364,6 @@ SqlBuilder.prototype.clear = function() {
 	return this;
 };
 
-SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
-
-	if (value == null)
-		return 'null';
-
-	var type = typeof(value);
-
-	if (type === 'function') {
-		value = value();
-		if (value == null)
-			return 'null';
-
-		type = typeof(value);
-	}
-
-	if (type === 'boolean')
-		return value === true ? 'true' : 'false';
-
-	if (type === 'number')
-		return value.toString();
-
-	if (type === 'string')
-		return pg_escape(value);
-
-	if (value instanceof Array)
-		return pg_escape(value.join(','));
-
-	if (value instanceof Date)
-		return pg_escape(dateToString(value));
-
-	return pg_escape(value.toString());
-};
-
 SqlBuilder.column = function(name, schema) {
 
 	var cachekey = (schema ? schema + '.' : '') + name;
@@ -1909,6 +1876,39 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 			});
 		});
 	});
+};
+
+Agent.escape = Agent.prototype.escape = SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
+
+	if (value == null)
+		return 'null';
+
+	var type = typeof(value);
+
+	if (type === 'function') {
+		value = value();
+		if (value == null)
+			return 'null';
+
+		type = typeof(value);
+	}
+
+	if (type === 'boolean')
+		return value === true ? 'true' : 'false';
+
+	if (type === 'number')
+		return value.toString();
+
+	if (type === 'string')
+		return pg_escape(value);
+
+	if (value instanceof Array)
+		return pg_escape(value.join(','));
+
+	if (value instanceof Date)
+		return pg_escape(dateToString(value));
+
+	return pg_escape(value.toString());
 };
 
 // Author: https://github.com/segmentio/pg-escape
