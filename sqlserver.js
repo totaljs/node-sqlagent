@@ -183,7 +183,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 			}
  		} else {
  			type = '+';
- 			if (value === null || value === undefined)
+ 			if (value == null)
  				value = 1;
  		}
 
@@ -375,7 +375,7 @@ SqlBuilder.prototype.field = function(name) {
 
 SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 
-	if (value === null || value === undefined)
+	if (value == null)
 		return 'null';
 
 	var type = typeof(value);
@@ -383,7 +383,7 @@ SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 	if (type === 'function') {
 		value = value();
 
-		if (value === null || value === undefined)
+		if (value == null)
 			return 'null';
 
 		type = typeof(value);
@@ -631,7 +631,7 @@ SqlBuilder.prototype.toString = function(id) {
 
 	var where = self.builder.join(' ');
 
-	if (id === undefined || id === null)
+	if (id === undefined)
 		id = null;
 
 	if (self._fn) {
@@ -847,7 +847,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', params: value, disable: value === undefined || value === null });
+	self.command.push({ type: 'put', params: value, disable: value == null });
 	return self;
 };
 
@@ -912,8 +912,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 
 	if (reverse) {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
@@ -924,8 +924,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		};
 	} else {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(false);
 			var r = results[id];
 			if (r instanceof Array)
@@ -962,7 +962,7 @@ Agent.prototype.commit = function() {
 
 function prepareValue(value) {
 
-	if (value === undefined || value === null)
+	if (value == null)
 		return null;
 
 	var type = typeof(value);
@@ -1670,6 +1670,7 @@ Agent.prototype.$bindwhen = function(name) {
 Agent.prototype.$bind = function(item, err, rows) {
 
 	var self = this;
+	var obj;
 
 	if (err) {
 		self.errors.push(item.name + ': ' + err.message);
@@ -1686,7 +1687,17 @@ Agent.prototype.$bind = function(item, err, rows) {
 				self.$id = self.id;
 		} else if (!item.first)
 			self.results[item.name] = EMPTYARRAY;
-		self.emit('data', item.name, self.results);
+
+		if (item.listing) {
+			obj = {};
+			obj.count = self.results[item.listing + '_count'];
+			obj.items = self.results[item.listing + '_items'];
+			self.results[item.target] = obj;
+			self.results[item.listing + '_count'] = null;
+			self.results[item.listing + '_items'] = null;
+		}
+
+		self.emit('data', item.target || item.name, self.results);
 		self.last = item.name;
 		self.$bindwhen(item.name);
 		return;
@@ -1707,7 +1718,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 		self.results[item.name] = rows;
 
 	if (item.listing) {
-		var obj = {};
+		obj = {};
 		obj.count = self.results[item.listing + '_count'];
 		obj.items = self.results[item.listing + '_items'];
 		self.results[item.target] = obj;

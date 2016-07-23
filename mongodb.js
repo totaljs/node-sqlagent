@@ -199,7 +199,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 			}
  		} else {
 	 		type = '+';
- 			if (value === null || value === undefined)
+ 			if (value == null)
  				value = 1;
  		}
 
@@ -777,7 +777,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', params: value, disable: value === undefined || value === null });
+	self.command.push({ type: 'put', params: value, disable: value == null });
 	return self;
 };
 
@@ -831,8 +831,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 
 	if (reverse) {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
@@ -843,8 +843,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		};
 	} else {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(false);
 			var r = results[id];
 			if (r instanceof Array)

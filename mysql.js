@@ -167,7 +167,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 			}
  		} else {
  			type = '+';
- 			if (value === null || value === undefined)
+ 			if (value == null)
  				value = 1;
  		}
 
@@ -356,7 +356,7 @@ SqlBuilder.prototype.field = function(name) {
 
 SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 
-	if (value === null || value === undefined)
+	if (value == null)
 		return 'null';
 
 	var type = typeof(value);
@@ -364,7 +364,7 @@ SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 	if (type === 'function') {
 		value = value();
 
-		if (value === null || value === undefined)
+		if (value == null)
 			return 'null';
 
 		type = typeof(value);
@@ -595,7 +595,7 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 
 	var where = self.builder.join(' ');
 
-	if (id === undefined || id === null)
+	if (id === undefined)
 		id = null;
 
 	if (self._fn) {
@@ -800,7 +800,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', value: value, disable: value === undefined || value === null });
+	self.command.push({ type: 'put', value: value, disable: value == null });
 	return self;
 };
 
@@ -865,8 +865,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 
 	if (reverse) {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
@@ -877,8 +877,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		};
 	} else {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(false);
 			var r = results[id];
 			if (r instanceof Array)
@@ -915,7 +915,7 @@ Agent.prototype.commit = function() {
 
 function prepareValue(value) {
 
-	if (value === undefined || value === null)
+	if (value == null)
 		return null;
 
 	var type = typeof(value);

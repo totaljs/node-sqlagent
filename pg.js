@@ -5,6 +5,10 @@ const Events = require('events');
 const queries = {};
 const columns_cache = {};
 const EMPTYARRAY = [];
+const REG_PARAMS = /\#\d+\#/g;
+const REG_QUERY = /\*/i;
+const REG_ESCAPE_1 = /'/g;
+const REG_ESCAPE_2 = /\\/g;
 
 database.defaults.poolIdleTimeout = 10;
 Object.freeze(EMPTYARRAY);
@@ -203,7 +207,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 			}
  		} else {
  			type = '+';
- 			if (value === null || value === undefined)
+ 			if (value == null)
  				value = 1;
  		}
 
@@ -362,14 +366,14 @@ SqlBuilder.prototype.clear = function() {
 
 SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 
-	if (value === null || value === undefined)
+	if (value == null)
 		return 'null';
 
 	var type = typeof(value);
 
 	if (type === 'function') {
 		value = value();
-		if (value === null || value === undefined)
+		if (value == null)
 			return 'null';
 
 		type = typeof(value);
@@ -610,11 +614,11 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 
 	var where = self.builder.join(' ');
 
-	if (id === undefined || id === null)
+	if (id === undefined)
 		id = null;
 
 	if (self._fn) {
-		where = where.replace(/\#\d+\#/g, function(text) {
+		where = where.replace(REG_PARAMS, function(text) {
 			if (text === '#00#')
 				return SqlBuilder.escape(id);
 			var output = self._fn[parseInt(text.substring(1, text.length - 1))];
@@ -629,7 +633,7 @@ SqlBuilder.prototype.toQuery = function(query) {
 	var self = this;
 	if (!self._fields)
 		return query;
-	return query.replace(/\*/i, self._fields);
+	return query.replace(REG_QUERY, self._fields);
 };
 
 SqlBuilder.prototype.make = function(fn) {
@@ -812,7 +816,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', value: value, disable: value === undefined || value === null });
+	self.command.push({ type: 'put', value: value, disable: value == null });
 	return self;
 };
 
@@ -877,8 +881,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 
 	if (reverse) {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
@@ -889,8 +893,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		};
 	} else {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(false);
 			var r = results[id];
 			if (r instanceof Array)
@@ -927,7 +931,7 @@ Agent.prototype.commit = function() {
 
 function prepareValue(value, type) {
 
-	if (value === undefined || value === null)
+	if (value == null)
 		return null;
 
 	if (!type)
@@ -1640,6 +1644,7 @@ Agent.prototype.$bindwhen = function(name) {
 Agent.prototype.$bind = function(item, err, rows) {
 
 	var self = this;
+	var obj;
 
 	if (err) {
 		self.errors.push(item.name + ': ' + err.message);
@@ -1656,7 +1661,17 @@ Agent.prototype.$bind = function(item, err, rows) {
 				self.$id = self.id;
 		} else if (!item.first)
 			self.results[item.name] = EMPTYARRAY;
-		self.emit('data', item.name, self.results);
+
+		if (item.listing) {
+			obj = {};
+			obj.count = self.results[item.listing + '_count'];
+			obj.items = self.results[item.listing + '_items'];
+			self.results[item.target] = obj;
+			self.results[item.listing + '_count'] = null;
+			self.results[item.listing + '_items'] = null;
+		}
+
+		self.emit('data', item.target || item.name, self.results);
 		self.last = item.name;
 		self.$bindwhen(item.name);
 		return;
@@ -1687,7 +1702,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 		self.results[item.name] = rows;
 
 	if (item.listing) {
-		var obj = {};
+		obj = {};
 		obj.count = self.results[item.listing + '_count'];
 		obj.items = self.results[item.listing + '_items'];
 		self.results[item.target] = obj;
@@ -1903,7 +1918,7 @@ function pg_escape(val){
 		return 'NULL';
 	var backslash = ~val.indexOf('\\');
 	var prefix = backslash ? 'E' : '';
-	val = val.replace(/'/g, "''").replace(/\\/g, '\\\\');
+	val = val.replace(REG_ESCAPE_1, "''").replace(REG_ESCAPE_2, '\\\\');
 	return prefix + "'" + val + "'";
 };
 
