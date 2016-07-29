@@ -646,6 +646,14 @@ sql.validate('Sorry, address not found for the current user', 'address');
 sql.exec();
 ```
 
+__Validation alternative (+v8.0.0)__
+
+```javascript
+sql.validate('products', n => n.length > 0, 'error-products');
+sql.validate('detail', n => !n, 'error-detail');
+```
+
+
 ## Global
 
 ### Skipper

@@ -940,6 +940,28 @@ Agent.prototype.validate = function(fn, error, reverse) {
 	return self;
 };
 
+// validate2('result', n => n.length > 0, 'error');
+Agent.prototype.validate2 = function(name, fn, err) {
+	var self = this;
+	var type = typeof(fn);
+
+	if (type === 'string') {
+		type = err;
+		err = fn;
+		fn = type;
+	}
+
+	var validator = function(err, results, next) {
+		if (fn(results[name]))
+			return next(true);
+		err.push(err || name);
+		next(false);
+	};
+
+	self.command.push({ type: 'validate', fn: validator, error: error });
+	return self;
+};
+
 Agent.prototype.cancel = function(fn) {
 	return this.validate(fn);
 };
