@@ -827,6 +827,9 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		return self;
 	}
 
+	if (type === 'string' && typeof(error) === 'function' && typeof(reverse) === 'string')
+		return self.validate2(fn, error, reverse);
+
 	var exec;
 
 	if (reverse) {
