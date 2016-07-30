@@ -15,7 +15,7 @@
 
 - Currently supports __PostgreSQL__, __MySQL__, __SQL Server__ and __MongoDB__
 - Simple and powerful
-- Best use with [total.js - web application framework for node.js](https://www.totaljs.com)
+- Best use with [Total.js - web framework for Node.js](https://www.totaljs.com)
 
 __IMPORTANT__:
 
@@ -1343,6 +1343,10 @@ nosql.readStream(id, function(err, stream, metadata, size, filename) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
 });
 ```
+
+## Contact
+
+Do you have any questions? Contact us <https://www.totaljs.com/contact/>
 
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
 [license-url]: license.txt
