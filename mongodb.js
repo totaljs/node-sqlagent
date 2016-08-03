@@ -1631,8 +1631,11 @@ Agent.prototype.readFile = function(id, callback) {
 
 Agent.prototype.readStream = function(id, callback) {
 	connect(this.connection, function(err, db) {
-		if (err)
+
+		if (err) {
+			self.errors && self.errors.push(err);
 			return callback(err);
+		}
 
 		var reader = new GridStore(db, id, 'r');
 		reader.open(function(err, fs) {
@@ -1640,9 +1643,8 @@ Agent.prototype.readStream = function(id, callback) {
 			if (err) {
 				reader.close();
 				reader = null;
-				if (callback)
-					callback(err);
-				return;
+				self.errors && self.errors.push(err);
+				return callback(err);
 			}
 
 			var stream = fs.stream(true);
@@ -1665,8 +1667,10 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 
 	connect(this.connection, function(err, db) {
 
-		if (err)
+		if (err) {
+			self.errors && self.errors.push(err);
 			return callback(err);
+		}
 
 		var arg = [];
 		var grid = new GridStore(db, id, name, 'w', { metadata: meta });
@@ -1675,17 +1679,20 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 			if (err) {
 				grid.close();
 				grid = null;
-				if (callback)
-					callback(err);
+				self.errors && self.errors.push(err);
+				callback && callback(err);
 				return;
 			}
 
 			grid.writeFile(filename, function(err) {
 				grid.close();
 				grid = null;
-				if (!callback)
-					return;
-				callback(err);
+
+				if (err) {
+					self.errors && self.errors.push(err);
+					callback && callback(err);
+				} else
+					callback && callback(null);
 			});
 		});
 	});
@@ -1704,8 +1711,11 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 
 	connect(this.connection, function(err, db) {
 
-		if (err)
-			return callback(err);
+		if (err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			return;
+		}
 
 		var grid = new GridStore(db, id ? id : new ObjectID(), name, 'w', { metadata: meta });
 
@@ -1714,15 +1724,20 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 			if (err) {
 				grid.close();
 				grid = null;
-				return callback(err);
+				self.errors && self.errors.push(err);
+				callback && callback(err);
+				return;
 			}
 
 			grid.write(buffer, function(err) {
 				grid.close();
 				grid = null;
-				if (err)
-					callback(err);
-				callback(null);
+
+				if (err) {
+					self.errors && self.errors.push(err);
+					callback && callback(err);
+				} else
+					callback && callback(null);
 			});
 		});
 	});

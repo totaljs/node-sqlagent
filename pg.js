@@ -1791,24 +1791,24 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
-			callback(err);
-			return;
+			self.errors && self.errors.push(err);
+			return callback(err);
 		}
 
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
 				done();
-				callback(err);
-				return;
+				self.errors && self.errors.push(err);
+				return callback(err);
 			}
 
 			lo.create(client).writeStream(buffersize || 16384, function(err, oid, stream) {
 
 				if (err) {
 					client.query('ROLLBACK', done);
-					callback(err);
-					return;
+					self.errors && self.errors.push(err);
+					return callback(err);
 				}
 
 				stream.on('finish', function() {
@@ -1831,24 +1831,24 @@ Agent.prototype.writeBuffer = function(buffer, callback) {
 	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
-			callback(err);
-			return;
+			self.errors && self.errors.push(err);
+			return callback(err);
 		}
 
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
 				done();
-				callback(err);
-				return;
+				self.errors && self.errors.push(err);
+				return callback(err);
 			}
 
-			lo.create(client).createAndWritableStream(buffer.length, function(err, oid, stream) {
+			lo.create(client).writeStream(buffer.length, function(err, oid, stream) {
 
 				if (err) {
 					client.query('ROLLBACK', done);
-					callback(err);
-					return;
+					self.errors && self.errors.push(err);
+					return callback(err);
 				}
 
 				stream.on('finish', function() {
@@ -1874,24 +1874,24 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
-			callback(err);
-			return;
+			self.errors && self.errors.push(err);
+			return callback(err);
 		}
 
 		client.query('BEGIN', function(err, result) {
 
 			if (err) {
 				done();
-				callback(err);
-				return;
+				self.errors && self.errors.push(err);
+				return callback(err);
 			}
 
 			lo.create(client).readStream(oid, buffersize || 16384, function(err, size, stream) {
 
 				if (err) {
 					done();
-					callback(err);
-					return;
+					self.errors && self.errors.push(err);
+					return callback(err);
 				}
 
 				stream.on('error', () => client.query('COMMIT', done));
