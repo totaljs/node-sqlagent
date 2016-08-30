@@ -9,7 +9,7 @@
     "name": "sqlagent",
     "repository": {
         "type": "git",
-        "url": "https://github.com/petersirka/node-sqlagent.git"
+        "url": "https://github.com/totaljs/node-sqlagent.git"
     },
-    "version": "8.1.0"
+    "version": "8.2.0"
 }
