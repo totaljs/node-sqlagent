@@ -535,11 +535,7 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	return self;
 };
 
-SqlBuilder.prototype.query = function(sql) {
-	return this.sql(sql);
-};
-
-SqlBuilder.prototype.sql = function(sql) {
+SqlBuilder.prototype.query = SqlBuilder.prototype.sql = function(sql) {
 	var self = this;
 	self.checkOperator();
 
