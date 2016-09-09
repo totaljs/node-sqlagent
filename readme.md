@@ -285,6 +285,7 @@ instance.query([name], query)
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `query` (String) SQL query
+- `params` (Array) SQL additional params (each DB has own SQL implementation e.g. PG `WHERE id=$1`, MySQL `WHERE id=?`, etc.)
 - __returns__ if params is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
@@ -655,6 +656,19 @@ sql.validate('detail', n => !n, 'error-detail');
 
 
 ## Global
+
+### Stored procedures
+
+```javascript
+sql.query('myresult', 'exec myprocedure');
+
+// with params
+// sql.query('myresult', 'exec myprocedure $1', [3403]);
+
+sql.exec(function(err, response) {
+    console.log(response.myresult);
+});
+```
 
 ### Skipper
 
