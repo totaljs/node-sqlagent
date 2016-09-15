@@ -1,6 +1,6 @@
 [![NPM version][npm-version-image]][npm-url] [![NPM downloads][npm-downloads-image]][npm-url] [![MIT License][license-image]][license-url]
 
-[![Support](https://www.totaljs.com/img/button-support.png?v=2)](https://www.totaljs.com/support/) )
+[![Support](https://www.totaljs.com/img/button-support.png?v=2)](https://www.totaljs.com/support/)
 
 # A very helpful ORM for node.js
 
