@@ -1631,6 +1631,8 @@ Agent.prototype.readFile = function(id, callback) {
 };
 
 Agent.prototype.readStream = function(id, callback) {
+	var self = this;
+	
 	connect(this.connection, function(err, db) {
 
 		if (err) {
@@ -1659,6 +1661,7 @@ Agent.prototype.readStream = function(id, callback) {
 };
 
 Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
+	var self = this;
 
 	if (typeof(meta) === 'function') {
 		var tmp = callback;
@@ -1700,6 +1703,7 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 };
 
 Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
+	var self = this;
 
 	if (!callback)
 		callback = NOOP;
