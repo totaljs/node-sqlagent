@@ -988,14 +988,10 @@ Agent.prototype.listing = function(name, table) {
 	var fn = function(db, builder, helper, callback) {
 
 		builder.prepare();
-
-		if (builder._isfirst)
-			console.warn('You can\'t use "builder.first()" for ".listing()".');
+		builder._isfirst && console.warn('You can\'t use "builder.first()" for ".listing()".');
 
 		var cursor = db.find(builder.builder);
-
 		cursor.project(PROJECTION);
-
 		cursor.count(function(err, count) {
 
 			if (err)
@@ -1005,14 +1001,10 @@ Agent.prototype.listing = function(name, table) {
 			output.count = count;
 			cursor = db.find(builder.builder);
 
-			if (builder._fields)
-				cursor.project(builder._fields);
-			if (builder._order)
-				cursor.sort(builder._order);
-			if (builder._take)
-				cursor.limit(builder._take);
-			if (builder._skip)
-				cursor.skip(builder._skip);
+			builder._fields && cursor.project(builder._fields);
+			builder._order && cursor.sort(builder._order);
+			builder._take && cursor.limit(builder._take);
+			builder._skip && cursor.skip(builder._skip);
 
 			cursor.toArray(function(err, docs) {
 				if (err)
@@ -1050,14 +1042,10 @@ Agent.prototype.select = function(name, table) {
 		}
 
 		var cursor = db.find(builder.builder);
-		if (builder._fields)
-			cursor.project(builder._fields);
-		if (builder._order)
-			cursor.sort(builder._order);
-		if (builder._take)
-			cursor.limit(builder._take);
-		if (builder._skip)
-			cursor.skip(builder._skip);
+		builder._fields && cursor.project(builder._fields);
+		builder._order && cursor.sort(builder._order);
+		builder._take && cursor.limit(builder._take);
+		builder._skip && cursor.skip(builder._skip);
 		cursor.toArray(callback);
 	};
 
@@ -1348,16 +1336,14 @@ Agent.prototype.destroy = function(name) {
 
 Agent.prototype.close = function() {
 	var self = this;
-	if (self.done)
-		self.done();
+	self.done && self.done();
 	self.done = null;
 	return self;
 };
 
 Agent.prototype.rollback = function(where, e, next) {
 	var self = this;
-	if (self.errors)
-		self.errors.push(e);
+	self.errors && self.errors.push(e);
 	next();
 };
 
@@ -1426,9 +1412,7 @@ Agent.prototype._prepare = function(callback) {
 
 		if (item.type === 'prepare') {
 			try {
-				item.fn(self.errors, self.results, function() {
-					next();
-				});
+				item.fn(self.errors, self.results, () => next());
 			} catch (e) {
 				self.rollback('prepare', e, next);
 			}
@@ -1516,8 +1500,7 @@ Agent.prototype._prepare = function(callback) {
 	}, function() {
 		self.time = Date.now() - self.debugtime;
 		self.index = 0;
-		if (self.done)
-			self.done();
+		self.done && self.done();
 		self.done = null;
 		var err = null;
 
@@ -1527,13 +1510,9 @@ Agent.prototype._prepare = function(callback) {
 		} else if (self.errors.length)
 			err = self.errors;
 
-		if (Agent.debug)
-			console.log(self.debugname, '----- done (' + self.time + ' ms)');
-
+		Agent.debug && console.log(self.debugname, '----- done (' + self.time + ' ms)');
 		self.emit('end', err, self.results, self.time);
-
-		if (callback)
-			callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
+		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
 	});
 
 	return self;
@@ -1554,13 +1533,11 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		delete self.returnIndex;
 
 	if (!self.command.length) {
-		if (callback)
-			callback.call(self, null, {});
+		callback && callback.call(self, null, {});
 		return self;
 	}
 
-	if (Agent.debug)
-		console.log(self.debugname, '----- exec');
+	Agent.debug && console.log(self.debugname, '----- exec');
 
 	connect(self.connection, function(err, db) {
 
@@ -1592,9 +1569,7 @@ function connect(conn, callback, index) {
 	if (index === undefined)
 		index = 1;
 
-	setTimeout(function() {
-		connect(conn, callback, index + 1);
-	}, 100);
+	setTimeout(() => connect(conn, callback, index + 1), 100);
 }
 
 Agent.prototype.$$exec = function(returnIndex) {
@@ -1632,8 +1607,7 @@ Agent.prototype.readFile = function(id, callback) {
 
 Agent.prototype.readStream = function(id, callback) {
 	var self = this;
-	
-	connect(this.connection, function(err, db) {
+	connect(self.connection, function(err, db) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1669,7 +1643,7 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 		meta = tmp;
 	}
 
-	connect(this.connection, function(err, db) {
+	connect(self.connection, function(err, db) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1794,8 +1768,7 @@ ObjectID.parseArray = function(value) {
 
 	for (var i = 0, length = value.length; i < length; i++) {
 		var id = ObjectID.parse(value[i]);
-		if (id)
-			arr.push(id);
+		id && arr.push(id);
 	}
 
 	return arr;
