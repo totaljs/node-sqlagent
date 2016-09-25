@@ -23,6 +23,7 @@ __IMPORTANT__:
 - `rollback` is executed automatically when is the transaction enabled
 - SQL Server: pagination works only in `SQL SERVER >=2012`
 - `SqlBuilder` is a global object
+- `undefined` values are skipped
 
 ## Initialization
 

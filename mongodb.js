@@ -101,14 +101,10 @@ SqlBuilder.prototype.set = function(name, value) {
 	}
 
 	var keys = Object.keys(name);
-
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-
-		if (key === '_id' || key[0] === '$')
-			continue;
-
-		self._set[key] = name[key];
+		if (key !== '_id' && key[0] !== '$' && name[key] !== undefined)
+			self._set[key] = name[key];
 	}
 
 	return self;
@@ -122,9 +118,9 @@ SqlBuilder.prototype.primary = SqlBuilder.prototype.primaryKey = function(name) 
 
 SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
 	if (this._set)
-		delete this._set[name];
+		this._set[name] = undefined;
 	if (this._inc)
-		delete this._inc[name];
+		this._inc[name] = undefined;
 	return this;
 };
 
@@ -144,7 +140,7 @@ SqlBuilder.prototype.fields = function() {
 	}
 
 	for (var i = 0; i < arguments.length; i++)
-			self.field(arguments[i]);
+		self.field(arguments[i]);
 	return self;
 };
 
@@ -221,8 +217,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-		if (name[key])
-			self.inc(key, name[key]);
+		name[key] && self.inc(key, name[key]);
 	}
 
 	return self;
@@ -640,8 +635,7 @@ Agent.connect = function(conn, callback) {
 			throw err;
 		}
 		CONNECTIONS[conn] = db;
-		if (callback)
-			callback();
+		callback && callback();
 	});
 	return function(error) {
 		return new Agent(conn, error);
@@ -665,7 +659,7 @@ Agent.prototype.clear = function() {
 	this.builders = {};
 
 	if (this.$when)
-		delete this.$when;
+		this.$when = undefined;
 
 	if (this.errors && this.isErrorBuilder)
 		this.errors.clear();
@@ -958,7 +952,7 @@ Agent.prototype.insert = function(name, table) {
 				data.$set[key] = data.$inc[key];
 			});
 
-			delete data.$inc;
+			data.$inc = undefined;
 		}
 
 		db.insert(data.$set, function(err, response) {
@@ -1530,7 +1524,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	if (returnIndex !== undefined && typeof(returnIndex) !== 'boolean')
 		self.returnIndex = returnIndex;
 	else
-		delete self.returnIndex;
+		self.returnIndex = undefined;
 
 	if (!self.command.length) {
 		callback && callback.call(self, null, {});

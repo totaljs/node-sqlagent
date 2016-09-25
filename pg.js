@@ -119,7 +119,8 @@ SqlBuilder.prototype.set = function(name, value) {
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
 		var val = name[key];
-		self._set[key] = val === '$' ? '#00#' : val;
+		if (val !== undefined)
+			self._set[key] = val === '$' ? '#00#' : val;
 	}
 
 	return self;
@@ -132,7 +133,7 @@ SqlBuilder.prototype.primary = SqlBuilder.prototype.primaryKey = function(name) 
 
 SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
 	if (this._set)
-		delete this._set[name]
+		this._set[name] = undefined;
 	return this;
 };
 
@@ -223,8 +224,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-		if (name[key])
-			self.inc(key, name[key]);
+		name[key] && self.inc(key, name[key]);
 	}
 
 	return self;
@@ -348,8 +348,7 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 
 SqlBuilder.prototype.checkOperator = function() {
 	var self = this;
-	if (!self.hasOperator)
-		self.and();
+	!self.hasOperator && self.and();
 	self.hasOperator = false;
 	return self;
 };
@@ -439,7 +438,7 @@ SqlBuilder.prototype.group = function(names) {
 			arr[i] = SqlBuilder.column(arguments[i.toString()], self._schema);
 		self._group = 'GROUP BY ' + arr.join(',');
 	} else
-		delete self._group;
+		self._group = undefined;
 
 	return self;
 };
@@ -450,7 +449,7 @@ SqlBuilder.prototype.having = function(condition) {
 	if (condition)
 		self._having = 'HAVING ' + condition;
 	else
-		delete self._having;
+		self._having = undefined;
 
 	return self;
 };
@@ -664,7 +663,7 @@ Agent.prototype.clear = function() {
 	this.builders = {};
 
 	if (this.$when)
-		delete this.$when;
+		this.$when = undefined;
 
 	if (this.errors && this.isErrorBuilder)
 		this.errors.clear();
@@ -954,7 +953,7 @@ Agent.prototype._insert = function(item) {
 		if (isRAW)
 			key = key.substring(1);
 
-		if (key[0] === '$')
+		if (key[0] === '$' || value === undefined)
 			continue;
 
 		if (value instanceof Array) {
@@ -1009,7 +1008,7 @@ Agent.prototype._update = function(item) {
 		if (isRAW)
 			key = key.substring(1);
 
-		if (key[0] === '$')
+		if (key[0] === '$' || value === undefined)
 			continue;
 
 		if (value instanceof Array) {
@@ -1098,10 +1097,7 @@ Agent.prototype._select = function(item) {
 
 Agent.prototype._compare = function(item) {
 	var keys = item.keys ? item.keys : item.condition._fields ? item.condition._fields.split(',') : Object.keys(item.value);
-
-	if (!item.condition._fields)
-		item.condition.fields.apply(item.condition, keys);
-
+	!item.condition._fields && item.condition.fields.apply(item.condition, keys);
 	item.query = 'SELECT * FROM ' + item.table;
 	item.$query = item.condition.toQuery(item.query) + item.condition.toString(this.id);
 	item.first = item.condition._take === 1;
@@ -1357,8 +1353,7 @@ Agent.prototype.destroy = function(name) {
 
 Agent.prototype.close = function() {
 	var self = this;
-	if (self.done)
-		self.done();
+	self.done && self.done();
 	self.done = null;
 	return self;
 };
@@ -1366,12 +1361,12 @@ Agent.prototype.close = function() {
 Agent.prototype.rollback = function(where, e, next) {
 	var self = this;
 
-	if (self.errors)
-		self.errors.push(e);
-
+	self.errors && self.errors.push(e);
 	self.command.length = 0;
+
 	if (!self.isTransaction)
 		return next();
+
 	self.isRollback = true;
 	self.end();
 	next();
@@ -1594,8 +1589,7 @@ Agent.prototype._prepare = function(callback) {
 
 		self.time = Date.now() - self.debugtime;
 		self.index = 0;
-		if (self.done)
-			self.done();
+		self.done && self.done();
 		self.done = null;
 		var err = null;
 
@@ -1609,9 +1603,7 @@ Agent.prototype._prepare = function(callback) {
 			console.log(self.debugname, '----- done (' + self.time + ' ms)');
 
 		self.emit('end', err, self.results, self.time);
-
-		if (callback)
-			callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
+		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
 	});
 
 	return self;
@@ -1734,11 +1726,10 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	if (returnIndex !== undefined && typeof(returnIndex) !== 'boolean')
 		self.returnIndex = returnIndex;
 	else
-		delete self.returnIndex;
+		self.returnIndex = undefined;
 
 	if (!self.command.length) {
-		if (callback)
-			callback.call(self, null, {});
+		callback && callback.call(self, null, {});
 		return self;
 	}
 
@@ -1972,9 +1963,7 @@ function prepare_params(params) {
 }
 
 function isFIRST(query) {
-	if (!query)
-		return false;
-	return query.substring(query.length - 7).toLowerCase() === 'limit 1';
+	return query ? query.substring(query.length - 7).toLowerCase() === 'limit 1' : false;
 }
 
 Agent.init = function(conn, debug) {
