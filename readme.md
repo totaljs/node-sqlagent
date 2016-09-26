@@ -1332,8 +1332,7 @@ sql.readStream(loid, function(err, stream, size) {
 
 ### MongoDB
 
-- all file operations are executed just-in-time (you don't need to call `sql.exec()`)
-- all file operations aren't executed in queue
+- all file operations are executed immediately, there's no need to call sql.exec()
 
 ```javascript
 // nosql.writeFile(id, filename, name, [metadata], callback)
@@ -1356,6 +1355,15 @@ nosql.readFile(some_object_id, function(err, gs, close, metadata, size, filename
 // nosql.readStream(id, callback(err, stream, metadata, size, filename))
 nosql.readStream(id, function(err, stream, metadata, size, filename) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
+});
+
+// get file info
+nosql.select('fs.files').make(function(builder){
+    // available fields - _id,filename,contentType,length,chunkSize,uploadDate,aliases,metadata,md5
+    builder.fields('filename', 'metadata');
+});
+nosql.exec(function(err, results){
+    console.log(results);
 });
 ```
 
