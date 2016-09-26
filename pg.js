@@ -1,4 +1,3 @@
-require('total.js');
 const database = require('pg');
 const lo = require('./pg-lo');
 const Events = require('events');
