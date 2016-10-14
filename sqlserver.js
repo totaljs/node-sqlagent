@@ -7,7 +7,7 @@ const pools_cache = {};
 
 require('./index');
 
-function SqlBuilder(skip, take, aget) {
+function SqlBuilder(skip, take, agent) {
 	this.agent = agent;
 	this.builder = [];
 	this._order = null;
