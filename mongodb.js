@@ -1,9 +1,11 @@
 const database = require('mongodb');
 const Events = require('events');
+const Fs = require('fs');
 const columns_cache = {};
 const CONNECTIONS = {};
 const NOOP = function(){};
 const PROJECTION = { _id: 1 };
+const FILEREADERFILTER = {};
 
 require('./index');
 
@@ -1583,47 +1585,35 @@ Agent.prototype.readFile = function(id, callback) {
 		if (err)
 			return callback(err);
 
-		var reader = new GridStore(db, id, 'r');
-		reader.open(function(err, fs) {
-			if (err) {
-				reader.close();
-				reader = null;
-				return callback(err, undefined, NOOP);
-			}
+		var bucket = new database.GridFSBucket(db);
+		FILEREADERFILTER._id = id;
 
-			callback(null, fs, function() {
-				reader.close();
-				reader = null;
-			}, fs.metadata, fs.length, fs.filename);
+		bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
+			if (!err && !doc)
+				err = new Error('File not found.');
+			if (err)
+				return callback(err, null, NOOP);
+			callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket), NOOP, doc.metadata, doc.length, doc.filename);
 		});
 	});
 };
 
 Agent.prototype.readStream = function(id, callback) {
 	var self = this;
-	connect(self.connection, function(err, db) {
+	connect(this.connection, function(err, db) {
 
-		if (err) {
-			self.errors && self.errors.push(err);
+		if (err)
 			return callback(err);
-		}
 
-		var reader = new GridStore(db, id, 'r');
-		reader.open(function(err, fs) {
+		var bucket = new database.GridFSBucket(db);
+		FILEREADERFILTER._id = id;
 
-			if (err) {
-				reader.close();
-				reader = null;
-				self.errors && self.errors.push(err);
+		bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
+			if (!err && !doc)
+				err = new Error('File not found.');
+			if (err)
 				return callback(err);
-			}
-
-			var stream = fs.stream(true);
-			callback(null, stream, fs.metadata, fs.length, fs.filename);
-			stream.on('close', function() {
-				reader.close();
-				reader = null;
-			});
+			callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket).stream(true), doc.metadata, doc.length, doc.filename);
 		});
 	});
 };
@@ -1644,28 +1634,16 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 			return callback(err);
 		}
 
-		var arg = [];
-		var grid = new GridStore(db, id, name, 'w', { metadata: meta });
-		grid.open(function(err, fs) {
+		var bucket = new database.GridFSBucket(db);
+		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
 
-			if (err) {
-				grid.close();
-				grid = null;
-				self.errors && self.errors.push(err);
-				callback && callback(err);
-				return;
-			}
-
-			grid.writeFile(filename, function(err) {
-				grid.close();
-				grid = null;
-
-				if (err) {
-					self.errors && self.errors.push(err);
-					callback && callback(err);
-				} else
-					callback && callback(null);
-			});
+		Fs.createReadStream(filename).pipe(upload).once('finish', function() {
+			callback && callback(null);
+			callback = null;
+		}).once('error', function(err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			callback = null;
 		});
 	});
 };
@@ -1690,28 +1668,13 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 			return;
 		}
 
-		var grid = new GridStore(db, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+		var bucket = new database.GridFSBucket(db);
+		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
 
-		grid.open(function(err, fs) {
-
-			if (err) {
-				grid.close();
-				grid = null;
-				self.errors && self.errors.push(err);
-				callback && callback(err);
-				return;
-			}
-
-			grid.write(buffer, function(err) {
-				grid.close();
-				grid = null;
-
-				if (err) {
-					self.errors && self.errors.push(err);
-					callback && callback(err);
-				} else
-					callback && callback(null);
-			});
+		upload.end(buffer, function(err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			callback = null;
 		});
 	});
 };
@@ -1791,4 +1754,17 @@ function get(obj, path) {
 	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(/\'/, '\'')));
 	columns_cache[cachekey] = fn;
 	return fn(obj);
+};
+
+function GridFSObject(id, meta, filename, length, type, bucket) {
+	this.id = id;
+	this.meta = meta;
+	this.filename = filename;
+	this.length = length;
+	this.type = type;
+	this.bucket = bucket;
+}
+
+GridFSObject.prototype.stream = function() {
+	return this.bucket.openDownloadStream(this.id);
 };

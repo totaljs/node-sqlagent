@@ -1362,6 +1362,7 @@ nosql.select('fs.files').make(function(builder){
     // available fields - _id,filename,contentType,length,chunkSize,uploadDate,aliases,metadata,md5
     builder.fields('filename', 'metadata');
 });
+
 nosql.exec(function(err, results){
     console.log(results);
 });
