@@ -120,9 +120,9 @@ SqlBuilder.prototype.primary = SqlBuilder.prototype.primaryKey = function(name) 
 
 SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
 	if (this._set)
-		this._set[name] = undefined;
+		delete this._set[name];
 	if (this._inc)
-		this._inc[name] = undefined;
+		delete this._inc[name];
 	return this;
 };
 
