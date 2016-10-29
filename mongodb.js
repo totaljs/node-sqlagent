@@ -1636,12 +1636,7 @@ Agent.prototype.writeFile = function(id, file, name, meta, callback) {
 
 		var bucket = new database.GridFSBucket(db);
 		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
-
-		var stream;
-		if(typeof(file.pipe) === 'function') {
-			stream = file;
-		} else
-			stream = Fs.createReadStream(file);
+		var stream = typeof(file.pipe) === 'function' ? file : Fs.createReadStream(file);
 
 		stream.pipe(upload).once('finish', function() {
 			callback && callback(null);
