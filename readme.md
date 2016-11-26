@@ -83,6 +83,26 @@ var nosql = DATABASE();
 // nosql === SqlAgent
 ```
 
+### IMPORTANT
+
+In order for mysql to return Boolean values please set the data type in db to BIT(1) and use bellow code for initialization.
+```javascript
+var Agent = require('sqlagent/mysql').connect({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "test",
+    typeCast: function castField( field, useDefaultTypeCasting ) {
+        if ( ( field.type === "BIT" ) && ( field.length === 1 ) ) {
+            var bytes = field.buffer();
+            return( bytes[ 0 ] === 1 );
+        }
+        return( useDefaultTypeCasting() );
+    }
+});
+var sql = new Agent();
+```
+
 ## Usage
 
 ### Select
