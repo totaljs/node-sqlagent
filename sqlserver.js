@@ -660,10 +660,12 @@ SqlBuilder.prototype.toQuery = function(query) {
 
 function Agent(options, error, id) {
 	this.$conn = id === undefined ? JSON.stringify(options) : id;
-	this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
+	this.isErrorBuilder = global.ErrorBuilder ? true : false;
 	this.errors = this.isErrorBuilder ? error : null;
 	this.options = options;
 	this.db = null;
+	this.clear();
+
 	// Hidden:
 	// this.time;
 	// this.$when;
