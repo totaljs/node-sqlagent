@@ -703,7 +703,7 @@ Agent.connect = function(conn, callback) {
 Agent.debug = false;
 
 Agent.prototype.clear = function() {
-	this.clear();
+
 	this.command = [];
 	this.done = null;
 	this.last = null;
