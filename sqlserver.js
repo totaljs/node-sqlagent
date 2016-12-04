@@ -4,6 +4,16 @@ const Parser = require('url');
 const queries = {};
 const columns_cache = {};
 const pools_cache = {};
+const EMPTYARRAY = [];
+const REG_SELECT = /select/i;
+const REG_CUSTOM = /\#\d+\#/g;
+const REG_WILDCARD = /\*/i;
+const REG_APO = /\'/g;
+const REG_COLUMN = /^(\!{1,}|\s)*/;
+const REG_COLUMN_CAST = /\[|\]/g;
+const REG_ARGUMENT = /\?/g;
+
+Object.freeze(EMPTYARRAY);
 
 require('./index');
 
@@ -38,7 +48,7 @@ SqlBuilder.prototype.replace = function(builder, reference) {
 	self.builder = reference ? builder.builder : builder.builder.slice(0);
 
 	if (builder._order)
-		self._order =  reference ? builder._order : builder._order.slice(0);
+		self._order = reference ? builder._order : builder._order.slice(0);
 
 	self._skip = builder._skip;
 	self._take = builder._take;
@@ -81,7 +91,7 @@ function copy(source) {
 };
 
 SqlBuilder.prototype.clone = function() {
-	var builder = new SqlBuilder(0, 0, this);
+	var builder = new SqlBuilder(0, 0, this.agent);
 	return builder.replace(this);
 };
 
@@ -110,7 +120,7 @@ SqlBuilder.prototype.remove = SqlBuilder.prototype.rem = function(name) {
 
 SqlBuilder.prototype.prepare = function(query) {
 	if (!this._skip && this._take)
-		return query.replace(/select/i, 'SELECT TOP ' + this._take);
+		return query.replace(REG_SELECT, 'SELECT TOP ' + this._take);
 	return query;
 };
 
@@ -141,14 +151,6 @@ SqlBuilder.prototype.set = function(name, value) {
 			self._set[key] = val === '$' ? '#00#' : val;
 	}
 
-	return self;
-};
-
-SqlBuilder.prototype.raw = function(name, value) {
-	var self = this;
-	if (!self._set)
-		self._set = {};
-	self._set['!' + name] = value;
 	return self;
 };
 
@@ -356,11 +358,11 @@ SqlBuilder.prototype.fields = function() {
 		var arr = arguments[0];
 		for (var i = 0, length = arr.length; i < length; i++)
 			self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arr[i], self._schema);
-		return self;
+	} else {
+		for (var i = 0; i < arguments.length; i++)
+			self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arguments[i], self._schema);
 	}
 
-	for (var i = 0; i < arguments.length; i++)
-		self._fields += (self._fields ? ',' : '') + SqlBuilder.column(arguments[i], self._schema);
 	return self;
 };
 
@@ -381,15 +383,13 @@ SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 
 	if (type === 'function') {
 		value = value();
-
 		if (value == null)
 			return 'null';
-
 		type = typeof(value);
 	}
 
 	if (type === 'boolean')
-		return value === true ? '1' : '0';
+		return value ? '1' : '0';
 
 	if (type === 'number')
 		return value.toString();
@@ -407,7 +407,7 @@ SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 };
 
 SqlBuilder.escaper = function(value) {
-	return "'" + value.replace(/\'/g, '\'\'') + "'";
+	return "'" + value.replace(REG_APO, '\'\'') + "'";
 };
 
 SqlBuilder.column = function(name, schema) {
@@ -421,15 +421,13 @@ SqlBuilder.column = function(name, schema) {
 
 	if (name[0] === '!') {
 		raw = true;
-		name = name.replace(/^(\!{1,}|\s)*/, '');
+		name = name.replace(REG_COLUMN, '');
 	}
 
 	var index = name.lastIndexOf('-->');
 	var cast = '';
 	var casting = function(value) {
-		if (!cast)
-			return value;
-		return 'CAST(' + value + cast + ')';
+		return cast ? 'CAST(' + value + cast + ')' : value;
 	};
 
 	if (index !== -1) {
@@ -470,7 +468,7 @@ SqlBuilder.column = function(name, schema) {
 	if (raw)
 		return columns_cache[cachekey] = casting(name) + plus;
 
-	name = name.replace(/\[|\]/g, '');
+	name = name.replace(REG_COLUMN_CAST, '');
 	index = name.indexOf('.');
 
 	if (index === -1)
@@ -538,7 +536,7 @@ SqlBuilder.prototype.scope = function(fn) {
 SqlBuilder.prototype.in = function(name, value) {
 	var self = this;
 	if (!(value instanceof Array)) {
-		self.where(name, value);
+		self.where(ame, value);
 		return self;
 	}
 	self.checkOperator();
@@ -585,16 +583,14 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	return self;
 };
 
-SqlBuilder.prototype.sql = function(sql) {
+SqlBuilder.prototype.query = SqlBuilder.prototype.sql = function(sql) {
 	var self = this;
 	self.checkOperator();
 
 	if (arguments.length > 1) {
 		var indexer = 1;
 		var argv = arguments;
-		sql = sql.replace(/\?/g, function() {
-			return SqlBuilder.escape(argv[indexer++]);
-		});
+		sql = sql.replace(REG_ARGUMENT, () => SqlBuilder.escape(argv[indexer++]));
 	}
 
 	self.builder.push(sql);
@@ -602,7 +598,7 @@ SqlBuilder.prototype.sql = function(sql) {
 	return self;
 };
 
-SqlBuilder.prototype.toString = function(id) {
+SqlBuilder.prototype.toString = function(id, isCounter) {
 
 	var self = this;
 	var plus = '';
@@ -612,18 +608,18 @@ SqlBuilder.prototype.toString = function(id) {
 	if (self._join)
 		join = self._join.join(' ') + ' ';
 
-	if (self._order)
-		order = ' ORDER BY ' + self._order.join(',');
-
-	if (self._skip && self._take)
-		plus = ' OFFSET ' + self._skip + ' ROWS FETCH NEXT ' + self._take + ' ROWS ONLY';
-	else if (self._take)
-		plus = ' FETCH NEXT ' + self._take + ' ROWS ONLY';
-	else if (self._skip)
-		plus = ' OFFSET ' + self._skip + ' ROWS';
-
-	if (!self._order && plus.length)
-		throw new Error('ORDER BY is missing.');
+	if (!isCounter) {
+		if (self._order)
+			order = ' ORDER BY ' + self._order.join(',');
+		if (self._skip && self._take)
+			plus = ' OFFSET ' + self._skip + ' ROWS FETCH NEXT ' + self._take + ' ROWS ONLY';
+		else if (self._take)
+			plus = ' OFFSET 0 ROWS FETCH NEXT ' + self._take + ' ROWS ONLY';
+		else if (self._skip)
+			plus = ' OFFSET ' + self._skip + ' ROWS';
+		if (!self._order && plus.length)
+			order = ' ORDER BY 1';
+	}
 
 	if (!self.builder.length)
 		return (join ? ' ' + join : '') + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
@@ -633,16 +629,10 @@ SqlBuilder.prototype.toString = function(id) {
 	if (id === undefined)
 		id = null;
 
-	if (self._fn) {
-		where = where.replace(/\#\d+\#/g, function(text) {
-			if (text === '#00#')
-				return SqlBuilder.escape(id);
-			var output = self._fn[parseInt(text.substring(1, text.length - 1))];
-			return SqlBuilder.escape(output);
-		});
-	}
+	if (self._fn)
+		where = where.replace(REG_CUSTOM, text => text === '#00#' ? SqlBuilder.escape(id) : SqlBuilder.escape(self._fn[parseInt(text.substring(1, text.length - 1))]));
 
-	return (join ? ' ' + join : '') + (self._is ? ' WHERE ' : ' ') + where + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
+	return (join ? ' ' + join : '') + (self._is ? ' ' : ' ') + where + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
 };
 
 SqlBuilder.prototype.make = function(fn) {
@@ -653,9 +643,7 @@ SqlBuilder.prototype.make = function(fn) {
 
 SqlBuilder.prototype.toQuery = function(query) {
 	var self = this;
-	if (!self._fields)
-		return query;
-	return query.replace(/\*/i, self._fields);
+	return self._fields ? query.replace(REG_WILDCARD, self._fields) : query;
 };
 
 function Agent(options, error, id) {
@@ -691,8 +679,7 @@ Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
 });
 
 Agent.connect = function(conn, callback) {
-	if (callback)
-		callback(null);
+	callback && callback(null);
 	var id = (Math.random() * 1000000) >> 0;
 	return function(error) {
 		return new Agent(conn, error, id);
@@ -736,10 +723,10 @@ Agent.prototype.when = function(name, fn) {
 	if (!this.$when)
 		this.$when = {};
 
-	if (!this.$when[name])
-		this.$when[name] = [fn];
-	else
+	if (this.$when[name])
 		this.$when[name].push(fn);
+	else
+		this.$when[name] = [fn];
 
 	return this;
 };
@@ -752,7 +739,6 @@ Agent.prototype.priority = function() {
 		return self;
 
 	var last = self.command[length];
-
 	for (var i = length; i > -1; i--)
 		self.command[i] = self.command[i - 1];
 
@@ -784,15 +770,11 @@ Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
 };
 
 Agent.prototype.skip = function(name) {
-
 	var self = this;
-
-	if (!name) {
+	if (name)
+		self.skips[name] = true;
+	else
 		self.skipCount++;
-		return self;
-	}
-
-	self.skips[name] = true;
 	return self;
 };
 
@@ -848,7 +830,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', params: value, disable: value == null });
+	self.command.push({ type: 'put', value: value, disable: value == null });
 	return self;
 };
 
@@ -987,16 +969,7 @@ Agent.prototype.commit = function() {
 };
 
 function prepareValue(value) {
-
-	if (value == null)
-		return null;
-
-	var type = typeof(value);
-
-	if (type === 'function')
-		return value();
-
-	return value;
+	return value == null ? null : typeof(value) === 'function' ? value() : value;
 }
 
 Agent.prototype._insert = function(item) {
@@ -1060,10 +1033,8 @@ Agent.prototype._insert = function(item) {
 				type = 'datetime';
 		}
 
-		if (isPrepare) {
-			if (item.condition._define[key])
-				type = item.condition._define[key];
-		}
+		if (isPrepare && item.condition._define[key])
+			type = item.condition._define[key];
 
 		params.push({ name: key, type: type, value: value === undefined ? null : value, isFN: isFN });
 	}
@@ -1134,8 +1105,7 @@ Agent.prototype._update = function(item) {
 				break;
 		}
 
-		if (!isRAW)
-			params.push({ name: key, type: type, value: value === undefined ? null : value });
+		!isRAW && params.push({ name: key, type: type, value: value === undefined ? null : value });
 	}
 
 	item.$query = 'UPDATE ' + item.table + ' SET ' + columns.join(',') + item.condition.toString(this.id) + '; SELECT @@rowcount As affectedRows';
@@ -1253,12 +1223,8 @@ Agent.prototype.listing = function(name, table, column) {
 	}
 
 	var key ='$listing_' + name;
-
-	if (!column)
-		column = '*';
-
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: key + '_count', condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.command.push({ type: 'query', query: 'SELECT COUNT(' + (column || '*') + ') as sqlagentcolumn FROM ' + table, name: key + '_count', condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
 	self.command.push({ type: 'select', name: key + '_items', table: table, condition: condition, listing: key, target: name });
 	self.builders[name] = condition;
 	return condition;
@@ -1291,11 +1257,8 @@ Agent.prototype.count = function(name, table, column) {
 		name = self.index++;
 	}
 
-	if (!column)
-		column = '*';
-
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT COUNT(' + column + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.command.push({ type: 'query', query: 'SELECT COUNT(' + (column || '*') + ') as sqlagentcolumn FROM ' + table, name: name, condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
 	self.builders[name] = condition;
 	return condition;
 };
@@ -1413,8 +1376,7 @@ Agent.prototype.expected = function(name, index, property) {
 
 Agent.prototype.close = function() {
 	var self = this;
-	if (self.done)
-		self.done();
+	self.done && self.done();
 	self.done = null;
 	return self;
 };
@@ -1422,12 +1384,12 @@ Agent.prototype.close = function() {
 Agent.prototype.rollback = function(where, e, next) {
 	var self = this;
 
-	if (self.errors)
-		self.errors.push(e);
-
+	self.errors && self.errors.push(e);
 	self.command.length = 0;
+
 	if (!self.isTransaction)
 		return next();
+
 	self.isRollback = true;
 	self.end();
 	next();
@@ -1511,9 +1473,7 @@ Agent.prototype._prepare = function(callback) {
 
 		if (item.type === 'prepare') {
 			try {
-				item.fn(self.errors, self.results, function() {
-					next();
-				});
+				item.fn(self.errors, self.results, () => next());
 			} catch (e) {
 				self.rollback('prepare', e, next);
 			}
@@ -1530,7 +1490,7 @@ Agent.prototype._prepare = function(callback) {
 			if (item.disable)
 				self.$id = null;
 			else
-				self.$id = typeof(item.params) === 'function' ? item.params() : item.params;
+				self.$id = typeof(item.value) === 'function' ? item.value() : item.value;
 			self.isPut = !self.disable;
 			next();
 			return;
@@ -1575,26 +1535,22 @@ Agent.prototype._prepare = function(callback) {
 			if (!item.first)
 				item.first = isFIRST(item.$query);
 
-			if (Agent.debug)
-				console.log(self.debugname, item.name, item.$query);
+			Agent.debug && console.log(self.debugname, item.name, item.$query);
 
 			self.emit('query', item.name, item.$query, item.$params);
 
 			var request = new database.Request(self.$transaction ? self.$transaction : self.db);
-			if (item.$params)
-				prepare_params_request(request, item.$params);
+			item.$params && prepare_params_request(request, item.$params);
+
 			request.query(item.$query, function(err, rows) {
-				self.$bind(items, err, rows);
+				self.$bind(item, err, rows);
 				next();
 			});
 			return;
 		}
 
 		if (item.type === 'begin') {
-
-			if (Agent.debug)
-				console.log(self.debugname, 'begin transaction');
-
+			Agent.debug && console.log(self.debugname, 'begin transaction');
 			self.$transaction = new database.Transaction(self.db);
 			self.$transaction.begin(function(err) {
 				if (err) {
@@ -1613,10 +1569,7 @@ Agent.prototype._prepare = function(callback) {
 		if (item.type === 'end') {
 			self.isTransaction = false;
 			if (self.isRollback) {
-
-				if (Agent.debug)
-					console.log(self.debugname, 'rollback transaction');
-
+				Agent.debug && console.log(self.debugname, 'rollback transaction');
 				self.$transaction.rollback(function(err) {
 					self.$transaction = null;
 					if (!err)
@@ -1629,9 +1582,7 @@ Agent.prototype._prepare = function(callback) {
 				return;
 			}
 
-			if (Agent.debug)
-				console.log(self.debugname, 'commit transaction');
-
+			Agent.debug && console.log(self.debugname, 'commit transaction');
 			self.$transaction.commit(function(err) {
 
 				if (!err) {
@@ -1653,7 +1604,12 @@ Agent.prototype._prepare = function(callback) {
 		}
 
 	}, function() {
-		self.time = Date.now() - self.debugtime;
+
+		if (Agent.debug) {
+			self.time = Date.now() - self.debugtime;
+			console.log(self.debugname, '----- done (' + self.time + ' ms)');
+		}
+
 		self.index = 0;
 		self.done && self.done();
 		self.done = null;
@@ -1664,9 +1620,6 @@ Agent.prototype._prepare = function(callback) {
 				err = self.errors;
 		} else if (self.errors.length)
 			err = self.errors;
-
-		if (Agent.debug)
-			console.log(self.debugname, '----- done (' + self.time + ' ms)');
 
 		self.emit('end', err, self.results, self.time);
 		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
@@ -1789,8 +1742,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		return self;
 	}
 
-	if (Agent.debug)
-		console.log(self.debugname, '----- exec');
+	Agent.debug && console.log(self.debugname, '----- exec');
 
 	if (!pools_cache[self.$conn]) {
 		if (typeof(self.options) === 'string') {
@@ -1872,7 +1824,7 @@ function prepare_params_request(request, params) {
 
 		switch (type) {
 			case 'number':
-				request.input(param.name, value % 1 === 0 ? database.Int : database.Decimal, value);
+				request.input(param.name, value % 1 === 0 ? database.Int : database.Float, value);
 				break;
 			case 'decimal':
 				request.input(param.name, database.Decimal, value);
