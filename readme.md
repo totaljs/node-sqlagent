@@ -248,6 +248,8 @@ sql.exec(function(err, response) {
 });
 ```
 
+__IMPORTANT__: `identity` works only with auto-increment in MS SQL SERVER.
+
 ### Update
 
 ```plain

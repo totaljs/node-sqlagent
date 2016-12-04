@@ -6,6 +6,7 @@ const CONNECTIONS = {};
 const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 const FILEREADERFILTER = {};
+const REG_APO = /\'/;
 
 require('./index');
 
@@ -676,10 +677,10 @@ Agent.prototype.when = function(name, fn) {
 	if (!this.$when)
 		this.$when = {};
 
-	if (!this.$when[name])
-		this.$when[name] = [fn];
-	else
+	if (this.$when[name])
 		this.$when[name].push(fn);
+	else
+		this.$when[name] = [fn];
 
 	return this;
 };
@@ -692,7 +693,6 @@ Agent.prototype.priority = function() {
 		return self;
 
 	var last = self.command[length];
-
 	for (var i = length; i > -1; i--)
 		self.command[i] = self.command[i - 1];
 
@@ -711,15 +711,11 @@ Agent.query = function() {
 };
 
 Agent.prototype.skip = function(name) {
-
 	var self = this;
-
-	if (!name) {
+	if (name)
+		self.skips[name] = true;
+	else
 		self.skipCount++;
-		return self;
-	}
-
-	self.skips[name] = true;
 	return self;
 };
 
@@ -742,15 +738,10 @@ Agent.prototype.expected = function(name, index, property) {
 		var output = self.results[name];
 		if (!output)
 			return null;
-		if (index === undefined) {
-			if (property === undefined)
-				return output;
-			return get(output, property);
-		}
+		if (index === undefined)
+			return property === undefined ? output : get(output, property);
 		output = output[index];
-		if (output)
-			return get(output, property);
-		return null;
+		return output ? get(output, property) : null;
 	};
 };
 
@@ -1068,9 +1059,7 @@ Agent.prototype.compare = function(name, table, obj, keys) {
 
 		var prop = keys ? keys : builder._fields ? Object.keys(builder._fields) : Object.keys(obj);
 
-		if (!builder._fields)
-			builder.fields.apply(builder, prop);
-
+		!builder._fields && builder.fields.apply(builder, prop);
 		builder.prepare();
 		db.findOne(builder.builder, builder._fields, function(err, doc) {
 
@@ -1086,8 +1075,7 @@ Agent.prototype.compare = function(name, table, obj, keys) {
 					var key = prop[i];
 					var a = val[key];
 					var b = obj[key];
-					if (a !== b)
-						diff.push(key);
+					a !== b && diff.push(key);
 				}
 			} else
 				diff = prop;
@@ -1494,7 +1482,12 @@ Agent.prototype._prepare = function(callback) {
 		});
 
 	}, function() {
-		self.time = Date.now() - self.debugtime;
+
+		if (Agent.debug) {
+			self.time = Date.now() - self.debugtime;
+			console.log(self.debugname, '----- done (' + self.time + ' ms)');
+		}
+
 		self.index = 0;
 		self.done && self.done();
 		self.done = null;
@@ -1506,7 +1499,6 @@ Agent.prototype._prepare = function(callback) {
 		} else if (self.errors.length)
 			err = self.errors;
 
-		Agent.debug && console.log(self.debugname, '----- done (' + self.time + ' ms)');
 		self.emit('end', err, self.results, self.time);
 		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
 	});
@@ -1752,7 +1744,7 @@ function get(obj, path) {
 		builder.push('if(!w.' + p + ')return');
 	}
 
-	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(/\'/, '\'')));
+	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(REG_APO, '\'')));
 	columns_cache[cachekey] = fn;
 	return fn(obj);
 };
