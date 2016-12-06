@@ -632,7 +632,7 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 	if (self._fn)
 		where = where.replace(REG_CUSTOM, text => text === '#00#' ? SqlBuilder.escape(id) : SqlBuilder.escape(self._fn[parseInt(text.substring(1, text.length - 1))]));
 
-	return (join ? ' ' + join : '') + (self._is ? ' ' : ' ') + where + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
+	return (join ? ' ' + join : '') + (self._is ? ' WHERE ' : ' ') + where + (self._group ? ' ' + self._group : '') + (self._having ? ' ' + self._having : '') + order + plus;
 };
 
 SqlBuilder.prototype.make = function(fn) {
