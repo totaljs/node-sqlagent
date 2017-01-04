@@ -1571,13 +1571,18 @@ Agent.destroy = function() {
 	throw new Error('Not supported.');
 };
 
-Agent.prototype.readFile = function(id, callback) {
+Agent.prototype.readFile = function(id, options, callback) {
+        if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+        
 	connect(this.connection, function(err, db) {
 
 		if (err)
 			return callback(err);
 
-		var bucket = new database.GridFSBucket(db);
+		var bucket = new database.GridFSBucket(db, options);
 		FILEREADERFILTER._id = id;
 
 		bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
@@ -1590,14 +1595,20 @@ Agent.prototype.readFile = function(id, callback) {
 	});
 };
 
-Agent.prototype.readStream = function(id, callback) {
+Agent.prototype.readStream = function(id, options, callback) {
 	var self = this;
+        
+        if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+        
 	connect(this.connection, function(err, db) {
 
 		if (err)
 			return callback(err);
 
-		var bucket = new database.GridFSBucket(db);
+		var bucket = new database.GridFSBucket(db, options);
 		FILEREADERFILTER._id = id;
 
 		bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
@@ -1610,8 +1621,13 @@ Agent.prototype.readStream = function(id, callback) {
 	});
 };
 
-Agent.prototype.writeFile = function(id, file, name, meta, callback) {
+Agent.prototype.writeFile = function(id, file, name, meta, options, callback) {
 	var self = this;
+        
+         if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
 
 	if (typeof(meta) === 'function') {
 		var tmp = callback;
@@ -1626,7 +1642,7 @@ Agent.prototype.writeFile = function(id, file, name, meta, callback) {
 			return callback(err);
 		}
 
-		var bucket = new database.GridFSBucket(db);
+		var bucket = new database.GridFSBucket(db, options);
 		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
 		var stream = typeof(file.pipe) === 'function' ? file : Fs.createReadStream(file);
 
@@ -1641,11 +1657,16 @@ Agent.prototype.writeFile = function(id, file, name, meta, callback) {
 	});
 };
 
-Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
+Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback) {
 	var self = this;
 
 	if (!callback)
 		callback = NOOP;
+            
+         if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
 
 	if (typeof(meta) === 'function') {
 		var tmp = callback;
@@ -1661,7 +1682,7 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
 			return;
 		}
 
-		var bucket = new database.GridFSBucket(db);
+		var bucket = new database.GridFSBucket(db, options);
 		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
 
 		upload.end(buffer, function(err) {
