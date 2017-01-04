@@ -196,12 +196,12 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					value = value.parseFloat();
 					break;
 			}
- 		} else {
+		} else {
 			if(type !== '-')
 				type = '+';
- 			if (value == null)
- 				value = 1;
- 		}
+			if (value == null)
+				value = 1;
+		}
 
 		if (!value)
 			return self;
@@ -1572,11 +1572,11 @@ Agent.destroy = function() {
 };
 
 Agent.prototype.readFile = function(id, options, callback) {
-        if (typeof(options) === 'function') {
+	if (typeof(options) === 'function') {
 		callback = options;
 		options = null;
 	}
-        
+
 	connect(this.connection, function(err, db) {
 
 		if (err)
@@ -1597,12 +1597,12 @@ Agent.prototype.readFile = function(id, options, callback) {
 
 Agent.prototype.readStream = function(id, options, callback) {
 	var self = this;
-        
-        if (typeof(options) === 'function') {
+
+	if (typeof(options) === 'function') {
 		callback = options;
 		options = null;
 	}
-        
+
 	connect(this.connection, function(err, db) {
 
 		if (err)
@@ -1623,8 +1623,8 @@ Agent.prototype.readStream = function(id, options, callback) {
 
 Agent.prototype.writeFile = function(id, file, name, meta, options, callback) {
 	var self = this;
-        
-         if (typeof(options) === 'function') {
+
+	if (typeof(options) === 'function') {
 		callback = options;
 		options = null;
 	}
@@ -1662,8 +1662,8 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback
 
 	if (!callback)
 		callback = NOOP;
-            
-         if (typeof(options) === 'function') {
+
+	if (typeof(options) === 'function') {
 		callback = options;
 		options = null;
 	}

@@ -1357,24 +1357,24 @@ sql.readStream(loid, function(err, stream, size) {
 - all file operations are executed immediately, there's no need to call sql.exec()
 
 ```javascript
-// nosql.writeFile(id, filename, name, [metadata], callback)
+// nosql.writeFile(id, filename, name, [metadata], [options], callback)
 nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
     // Now is the file inserted
 });
 
-// nosql.writeBuffer(id, buffer, filename, [metadata], callback)
+// nosql.writeBuffer(id, buffer, filename, [metadata], [options], callback)
 nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), 'petersirka.txt', function(err) {
     // Now is the buffer inserted    
 });
 
-// nosql.readFile(id, callback(err, gs, close, metadata, size, filename))
+// nosql.readFile(id, [options], callback(err, gs, close, metadata, size, filename))
 nosql.readFile(some_object_id, function(err, gs, close, metadata, size, filename) {
     // gs = GridStore
     // gs.stream(true);
     close();
 });
 
-// nosql.readStream(id, callback(err, stream, metadata, size, filename))
+// nosql.readStream(id, [options], callback(err, stream, metadata, size, filename))
 nosql.readStream(id, function(err, stream, metadata, size, filename) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
 });
