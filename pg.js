@@ -3,7 +3,6 @@ const lo = require('./pg-lo');
 const Events = require('events');
 const queries = {};
 const columns_cache = {};
-const EMPTYARRAY = [];
 const REG_PARAMS = /\#\d+\#/g;
 const REG_QUERY = /\*/i;
 const REG_ESCAPE_1 = /'/g;
@@ -13,7 +12,6 @@ const REG_COLUMN = /^(\!{1,}|\s)*/;
 const REG_QUOTE = /\"/g;
 
 database.defaults.poolIdleTimeout = 10;
-Object.freeze(EMPTYARRAY);
 
 require('./index');
 
@@ -1601,7 +1599,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 			if (!self.isPut)
 				self.$id = self.id;
 		} else if (!item.first)
-			self.results[item.name] = EMPTYARRAY;
+			self.results[item.name] = [];
 
 		if (item.listing) {
 			obj = {};
