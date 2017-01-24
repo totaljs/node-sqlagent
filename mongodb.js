@@ -1227,11 +1227,11 @@ Agent.prototype.update = function(name, table) {
 
 		if (builder._isfirst) {
 			db.updateOne(builder.builder, builder.data, function(err, response) {
-				callback(err, response ? (response.result.nModified || response.result.n) > 0 : false);
+				callback(err, response ? (response.result.nModified || response.result.n) : 0);
 			});
 		} else {
 			db.update(builder.builder, builder.data, { multi: true }, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				callback(err, response ? (response.result.nModified || response.result.n) : 0);
 			});
 		}
 	};
@@ -1255,11 +1255,11 @@ Agent.prototype.delete = function(name, table) {
 		builder.prepare();
 		if (builder._isfirst) {
 			db.remove(builder.builder, { single: true }, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				callback(err, response ? (response.result.nRemoved || response.result.n) : 0);
 			});
 		} else {
 			db.remove(builder.builder, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				callback(err, response ? (response.result.nRemoved || response.result.n) : 0);
 			});
 		}
 	};
