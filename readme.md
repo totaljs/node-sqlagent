@@ -1154,7 +1154,7 @@ adds having in SQL query
 ```plain
 builder.and()
 ```
-adds AND to SQL query
+adds AND to SQL query. __IMPORTANT__: In MongoDB has to be this operator used before all queries.
 
 ---
 
@@ -1163,7 +1163,7 @@ adds AND to SQL query
 ```plain
 builder.or()
 ```
-adds OR to SQL query
+adds OR to SQL query. __IMPORTANT__: In MongoDB has to be this operator used before all queries.
 
 ---
 
@@ -1220,6 +1220,19 @@ adds a custom SQL to SQL query
 builder.sql('age=? AND name=?', 20, 'Peter');
 ```
 
+#### builder.query()
+
+- works with MongoDB
+
+```plain
+builder.query(fieldname, filter)
+```
+adds a custom QUERY to filter.
+
+```javascript
+builder.query('tags', { $size: 0 });
+```
+
 ---
 
 #### builder.scope()
@@ -1232,11 +1245,21 @@ adds a scope `()`
 ```javascript
 builder.where('user', 'person');
 builder.and();
+
+// RDMBS:
 builder.scope(function() {
     builder.where('type', 20);
     builder.or();
     builder.where('age', '<', 20);
 });
+
+// MongoDB:
+builder.scope(function() {
+    builder.or();
+    builder.where('type', 20);
+    builder.where('age', '<', 20);
+});
+
 // creates: user='person' AND (type=20 OR age<20)
 ```
 

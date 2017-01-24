@@ -495,9 +495,8 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	return self;
 };
 
-SqlBuilder.prototype.query = function(obj) {
-	console.log('SqlBuilder.query() is not supported.');
-	return this;
+SqlBuilder.prototype.query = function(name, value) {
+	return this.$scope(name, value, undefined, 10);
 };
 
 SqlBuilder.prototype.sql = function(obj) {
@@ -1020,6 +1019,7 @@ Agent.prototype.select = function(name, table) {
 	var fn = function(db, builder, helper, callback) {
 
 		builder.prepare();
+
 		if (builder._isfirst) {
 			if (builder._fields)
 				db.findOne(builder.builder, builder._fields, callback);
