@@ -1650,7 +1650,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 		return;
 	}
 
-	if (!rows.length) {
+	if (!rows || !rows.length) {
 		if (item.type === 'insert') {
 			self.id = null;
 			if (!self.isPut)
