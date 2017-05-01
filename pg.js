@@ -85,7 +85,7 @@ function copy(source) {
 	}
 
 	return target;
-};
+}
 
 SqlBuilder.prototype.clone = function() {
 	var builder = new SqlBuilder(0, 0, this.agent);
@@ -206,11 +206,11 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					value = value.parseFloat();
 					break;
 			}
- 		} else {
- 			type = '+';
- 			if (value == null)
- 				value = 1;
- 		}
+		} else {
+			type = '+';
+			if (value == null)
+				value = 1;
+		}
 
 		if (!value)
 			return self;
@@ -591,7 +591,7 @@ SqlBuilder.prototype.toQuery = function(query) {
 
 SqlBuilder.prototype.make = function(fn) {
 	var self = this;
-	fn.call(self, self)
+	fn.call(self, self);
 	return self.agent || self;
 };
 
@@ -871,7 +871,7 @@ Agent.prototype.validate2 = function(name, fn, err) {
 		next(false);
 	};
 
-	self.command.push({ type: 'validate', fn: validator, error: error });
+	self.command.push({ type: 'validate', fn: validator, error: err });
 	return self;
 };
 
@@ -1738,7 +1738,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 			return callback(err);
 		}
 
-		client.query('BEGIN', function(err, result) {
+		client.query('BEGIN', function(err) {
 
 			if (err) {
 				done();
@@ -1778,7 +1778,7 @@ Agent.prototype.writeBuffer = function(buffer, callback) {
 			return callback(err);
 		}
 
-		client.query('BEGIN', function(err, result) {
+		client.query('BEGIN', function(err) {
 
 			if (err) {
 				done();
@@ -1821,7 +1821,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 			return callback(err);
 		}
 
-		client.query('BEGIN', function(err, result) {
+		client.query('BEGIN', function(err) {
 
 			if (err) {
 				done();
@@ -1886,7 +1886,7 @@ function pg_escape(val){
 	var prefix = backslash ? 'E' : '';
 	val = val.replace(REG_ESCAPE_1, "''").replace(REG_ESCAPE_2, '\\\\');
 	return prefix + "'" + val + "'";
-};
+}
 
 function dateToString(dt) {
 	var arr = [];
@@ -1903,17 +1903,6 @@ function dateToString(dt) {
 	}
 
 	return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
-}
-
-function prepare_params(params) {
-	if (!params)
-		return params;
-	for (var i = 0, length = params.length; i < length; i++) {
-		var param = params[i];
-		if (typeof(param) === 'function')
-			params[i] = param(params);
-	}
-	return params;
 }
 
 function isFIRST(query) {

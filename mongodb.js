@@ -867,7 +867,7 @@ Agent.prototype.validate2 = function(name, fn, err) {
 		next(false);
 	};
 
-	self.command.push({ type: 'validate', fn: validator, error: error });
+	self.command.push({ type: 'validate', fn: validator, error: err });
 	return self;
 };
 
@@ -1596,7 +1596,6 @@ Agent.prototype.readFile = function(id, options, callback) {
 };
 
 Agent.prototype.readStream = function(id, options, callback) {
-	var self = this;
 
 	if (typeof(options) === 'function') {
 		callback = options;
@@ -1619,6 +1618,8 @@ Agent.prototype.readStream = function(id, options, callback) {
 			callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket).stream(true), doc.metadata, doc.length, doc.filename);
 		});
 	});
+
+	return this;
 };
 
 Agent.prototype.writeFile = function(id, file, name, meta, options, callback) {
@@ -1655,6 +1656,8 @@ Agent.prototype.writeFile = function(id, file, name, meta, options, callback) {
 			callback = null;
 		});
 	});
+
+	return self;
 };
 
 Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback) {
@@ -1691,6 +1694,8 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback
 			callback = null;
 		});
 	});
+
+	return self;
 };
 
 Agent.init = function(conn, debug) {
@@ -1768,7 +1773,7 @@ function get(obj, path) {
 	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(REG_APO, '\'')));
 	columns_cache[cachekey] = fn;
 	return fn(obj);
-};
+}
 
 function GridFSObject(id, meta, filename, length, type, bucket) {
 	this.id = id;

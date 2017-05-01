@@ -85,7 +85,7 @@ function copy(source) {
 	}
 
 	return target;
-};
+}
 
 SqlBuilder.prototype.clone = function() {
 	var builder = new SqlBuilder(0, 0, this.agent);
@@ -181,11 +181,11 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					value = value.parseFloat();
 					break;
 			}
- 		} else {
- 			type = '+';
- 			if (value == null)
- 				value = 1;
- 		}
+		} else {
+			type = '+';
+			if (value == null)
+				value = 1;
+		}
 
 		if (!value)
 			return self;
@@ -533,7 +533,7 @@ SqlBuilder.prototype.scope = function(fn) {
 SqlBuilder.prototype.in = function(name, value) {
 	var self = this;
 	if (!(value instanceof Array)) {
-		self.where(ame, value);
+		self.where(name, value);
 		return self;
 	}
 	self.checkOperator();
@@ -634,7 +634,7 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 
 SqlBuilder.prototype.make = function(fn) {
 	var self = this;
-	fn.call(self, self)
+	fn.call(self, self);
 	return self.agent || self;
 };
 
@@ -761,7 +761,7 @@ Agent.prototype.nolock = function(enable) {
 	return this;
 };
 
-Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
+Agent.prototype.primaryKey = Agent.prototype.primary = function() {
 	// compatibility with PG
 	return this;
 };
@@ -941,7 +941,7 @@ Agent.prototype.validate2 = function(name, fn, err) {
 		next(false);
 	};
 
-	self.command.push({ type: 'validate', fn: validator, error: error });
+	self.command.push({ type: 'validate', fn: validator, error: err });
 	return self;
 };
 
@@ -965,13 +965,8 @@ Agent.prototype.commit = function() {
 	return this.end();
 };
 
-function prepareValue(value) {
-	return value == null ? null : typeof(value) === 'function' ? value() : value;
-}
-
 Agent.prototype._insert = function(item) {
 
-	var self = this;
 	var values = item.condition._set;
 	var isPrepare = item.condition._define;
 
@@ -1045,7 +1040,6 @@ Agent.prototype._insert = function(item) {
 Agent.prototype._update = function(item) {
 
 	var values = item.condition._set;
-	var condition = item.condition;
 	var keys = Object.keys(values);
 
 	var columns = [];
@@ -1787,7 +1781,7 @@ Agent.prototype.$$exec = function(returnIndex) {
 	return function(callback) {
 		return self.exec(callback, returnIndex);
 	};
-}
+};
 
 function dateToString(dt) {
 	var arr = [];

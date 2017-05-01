@@ -143,7 +143,7 @@ LargeObjectManager.prototype.readStream = function(oid, bufferSize, callback) {
 	self.open(oid, LargeObjectManager.READ, function(err, obj) {
 
 		if (err)
-		  return callback(err);
+			return callback(err);
 
 		obj.size(function(err, size) {
 
@@ -155,7 +155,7 @@ LargeObjectManager.prototype.readStream = function(oid, bufferSize, callback) {
 
 			var stream = obj.getReadableStream(bufferSize);
 
-			stream.on('error', function(err) {
+			stream.on('error', function() {
 				obj.close(NOOP);
 			});
 
@@ -211,14 +211,14 @@ var WriteStream = function(largeObject, bufferSize) {
 	else if (WRITESTREAM.bufferSize !== BUFFERSIZE)
 		WRITESTREAM.bufferSize = BUFFERSIZE;
 
-    Stream.Writable.call(this, WRITESTREAM);
-    this._largeObject = largeObject;
+	Stream.Writable.call(this, WRITESTREAM);
+	this._largeObject = largeObject;
 };
 
 WriteStream.prototype = Object.create(Stream.Writable.prototype);
 WriteStream.prototype._write = function(chunk, encoding, callback) {
 	if (!Buffer.isBuffer(chunk))
-		throw "Illegal Argument";
+		throw 'Illegal Argument';
 	this._largeObject.write(chunk, callback);
 };
 
@@ -235,9 +235,9 @@ ReadStream.prototype = Object.create(Stream.Readable.prototype);
 ReadStream.prototype._read = function(length) {
 
 	if (length <= 0)
-		throw "Illegal Argument";
+		throw 'Illegal Argument';
 
-    var self = this;
+	var self = this;
 	self._largeObject.read(length, function(error, data) {
 
 		if (error)
@@ -254,4 +254,3 @@ ReadStream.prototype._read = function(length) {
 exports.create = function(client) {
 	return new LargeObjectManager(client);
 };
-

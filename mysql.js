@@ -81,7 +81,7 @@ function copy(source) {
 	}
 
 	return target;
-};
+}
 
 SqlBuilder.prototype.clone = function() {
 	var builder = new SqlBuilder(0, 0, this);
@@ -171,11 +171,11 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					value = value.parseFloat();
 					break;
 			}
- 		} else {
- 			type = '+';
- 			if (value == null)
- 				value = 1;
- 		}
+		} else {
+			type = '+';
+			if (value == null)
+				value = 1;
+		}
 
 		if (!value)
 			return self;
@@ -573,7 +573,7 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 
 SqlBuilder.prototype.make = function(fn) {
 	var self = this;
-	fn.call(self, self)
+	fn.call(self, self);
 	return self.agent || self;
 };
 
@@ -697,7 +697,7 @@ Agent.prototype.skip = function(name) {
 	return self;
 };
 
-Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
+Agent.prototype.primaryKey = Agent.prototype.primary = function() {
 	// compatibility with PG
 	return this;
 };
@@ -868,7 +868,7 @@ Agent.prototype.validate2 = function(name, fn, err) {
 		next(false);
 	};
 
-	self.command.push({ type: 'validate', fn: validator, error: error });
+	self.command.push({ type: 'validate', fn: validator, error: err });
 	return self;
 };
 
@@ -892,13 +892,8 @@ Agent.prototype.commit = function() {
 	return this.end();
 };
 
-function prepareValue(value) {
-	return value == null ? null : typeof(value) === 'function' ? value() : value;
-}
-
 Agent.prototype._insert = function(item) {
 
-	var self = this;
 	var values = item.condition._set;
 	var keys = Object.keys(values);
 
@@ -1663,7 +1658,7 @@ Agent.prototype.$$exec = function(returnIndex) {
 	var self = this;
 	return function(callback) {
 		return self.exec(callback, returnIndex);
-	}
+	};
 };
 
 Agent.escape = Agent.prototype.escape = SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
@@ -1713,17 +1708,6 @@ function dateToString(dt) {
 			arr[i] = '0' + arr[i];
 	}
 	return arr[0] + '-' + arr[1] + '-' + arr[2] + ' ' + arr[3] + ':' + arr[4] + ':' + arr[5];
-}
-
-function prepare_params(params) {
-	if (!params)
-		return params;
-	for (var i = 0, length = params.length; i < length; i++) {
-		var param = params[i];
-		if (typeof(param) === 'function')
-			params[i] = param(params);
-	}
-	return params;
 }
 
 function isFIRST(query) {
