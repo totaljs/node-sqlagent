@@ -28,11 +28,11 @@ __IMPORTANT__:
 - `SqlBuilder` is a global object
 - `undefined` values are skipped
 
-## Initialization
+## Initialization
 
 ### Basic initialization
 
-#### PostgreSQL
+#### PostgreSQL
 
 ```javascript
 // Example: postgre://user:password@127.0.0.1/database
@@ -108,7 +108,7 @@ var sql = new Agent();
 
 ## Usage
 
-### Select
+### Select
 
 ```plain
 instance.select([name], table)
@@ -696,7 +696,7 @@ sql.exec(function(err, response) {
 });
 ```
 
-### Skipper
+### Skipper
 
 ```javascript
 sql.select('users', 'tbl_users');
@@ -820,7 +820,7 @@ sql.exec();
 
 ## Bonus
 
-### How to get latest inserted ID?
+### How to get latest inserted ID?
 
 - doesn't work with MongoDB
 
@@ -907,7 +907,7 @@ sql.priority(); // --> takes last item in queue and inserts it as first (sorts i
 ```
 
 
-### Debug mode
+### Debug mode
 
 Debug mode writes each query to console.
 
@@ -948,7 +948,7 @@ sql.exec(function(err, response) {
 
 ---
 
-#### builder.set()
+#### builder.set()
 
 ```plain
 builder.set(name, value)
@@ -961,7 +961,7 @@ adds a value for update or insert
 
 ---
 
-#### builder.raw()
+#### builder.raw()
 
 ```plain
 builder.raw(name, value)
@@ -988,7 +988,7 @@ builder.set({ name: 'Peter', age: 30 });
 
 ---
 
-#### builder.inc()
+#### builder.inc()
 
 ```plain
 builder.set(name, [type], value)
@@ -1012,7 +1012,7 @@ builder.inc('credits', '-1');
 
 ---
 
-#### builder.rem()
+#### builder.rem()
 
 ```plain
 builder.rem(name)
@@ -1026,7 +1026,7 @@ builder.rem('name');
 
 ---
 
-#### builder.sort()
+#### builder.sort()
 
 ```plain
 builder.sort(name, [desc])
@@ -1037,7 +1037,7 @@ adds sorting
 - `name` (String) column name
 - `desc` (Boolean), default: false
 
-#### builder.random()
+#### builder.random()
 
 ```plain
 builder.random()
@@ -1047,7 +1047,7 @@ Reads random rows. __IMPORTANT__: MongoDB doesn't support this feature.
 
 ---
 
-#### builder.skip()
+#### builder.skip()
 
 ```plain
 builder.skip(value)
@@ -1058,7 +1058,7 @@ skips records
 
 ---
 
-#### builder.take()
+#### builder.take()
 
 ```plain
 builder.take(value)
@@ -1070,7 +1070,7 @@ takes records
 
 ---
 
-#### builder.page()
+#### builder.page()
 
 ```plain
 builder.page(page, maxItemsPerPage)
@@ -1082,7 +1082,7 @@ sets automatically sql.skip() and sql.take()
 
 ---
 
-#### builder.first()
+#### builder.first()
 
 ```plain
 builder.first()
@@ -1091,7 +1091,7 @@ sets sql.take(1)
 
 ---
 
-#### builder.join()
+#### builder.join()
 
 - doesn't work with MongoDB
 
@@ -1348,7 +1348,7 @@ creates escaped SQL query (internal)
 
 ## Blob
 
-### PostgreSQL
+### PostgreSQL
 
 - all file operations are executed just-in-time (you don't need to call `sql.exec()`)
 - all file operations aren't executed in queue
@@ -1416,7 +1416,7 @@ nosql.exec(function(err, results){
 });
 ```
 
-## Contact
+## Contact
 
 Do you have any questions? Contact us <https://www.totaljs.com/contact/>
 
