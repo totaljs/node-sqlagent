@@ -1,5 +1,4 @@
 const database = require('mongodb');
-const Events = require('events');
 const Fs = require('fs');
 const columns_cache = {};
 const CONNECTIONS = {};
@@ -20,10 +19,6 @@ function SqlBuilder(skip, take, agent) {
 	this._inc = null;
 	this._scope = 0;
 	this._fields;
-	this._schema;
-	this._group;
-	this._having;
-	this._primary;
 	this._is = false;
 	this._isfirst = false;
 	this._prepare;
@@ -70,6 +65,19 @@ SqlBuilder.prototype.replace = function(builder, reference) {
 	return self;
 };
 
+SqlBuilder.prototype.debug = function(type) {
+	var obj = {};
+	obj.type = type;
+	obj.condition = this.builder;
+	this._fields && (obj.project = this._fields);
+	this._order && (obj.sort = this._order);
+	this._set && (obj.set = this._set);
+	this._inc && (obj.inc = this._inc);
+	obj.take = this._take;
+	obj.skip = this._skip;
+	return obj;
+};
+
 function copy(source) {
 
 	var keys = Object.keys(source);
@@ -82,7 +90,7 @@ function copy(source) {
 	}
 
 	return target;
-};
+}
 
 SqlBuilder.prototype.clone = function() {
 	var builder = new SqlBuilder(0, 0, this.agent);
@@ -248,7 +256,7 @@ SqlBuilder.prototype.order = function(name, desc) {
 
 	if (index !== -1 || lowered.lastIndexOf('asc') !== -1) {
 		name = name.split(' ')[0];
-		desc = indexOf !== -1;
+		desc = index !== -1;
 	}
 
 	columns_cache[key] = {};
@@ -321,7 +329,6 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 	} else if (operator === '!=')
 		operator = '<>';
 
-	var is = false;
 	var type = typeof(value);
 
 	if (name[0] === '!' && type !== 'function') {
@@ -487,7 +494,6 @@ SqlBuilder.prototype.like = function(name, value, where) {
 
 SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	var self = this;
-	var obj = {};
 	var typeA = typeof(valueA);
 	var typeB = typeof(valueB);
 	self.$scope(name, { $gte: valueA, $lte: valueB }, typeA === 'function' || typeB === 'function' ? 'function' : typeA, 3);
@@ -593,7 +599,7 @@ SqlBuilder.prototype.prepare = function() {
 
 SqlBuilder.prototype.make = function(fn) {
 	var self = this;
-	fn.call(self, self)
+	fn.call(self, self);
 	return self.agent || self;
 };
 
@@ -602,6 +608,7 @@ function Agent(name, error) {
 	this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
 	this.errors = this.isErrorBuilder ? error : null;
 	this.clear();
+	this.$events = {};
 
 	// Hidden:
 	// this.$when;
@@ -619,13 +626,6 @@ Agent.prototype = {
 	}
 };
 
-Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
-	constructor: {
-		value: Agent,
-		enumberable: false
-	}
-});
-
 // Debug mode (output to console)
 Agent.debug = false;
 
@@ -642,6 +642,65 @@ Agent.connect = function(conn, callback) {
 	return function(error) {
 		return new Agent(conn, error);
 	};
+};
+
+Agent.prototype.emit = function(name, a, b, c, d, e, f, g) {
+	var evt = this.$events[name];
+	if (evt) {
+		var clean = false;
+		for (var i = 0, length = evt.length; i < length; i++) {
+			if (evt[i].$once)
+				clean = true;
+			evt[i].call(this, a, b, c, d, e, f, g);
+		}
+		if (clean) {
+			evt = evt.remove(n => n.$once);
+			if (evt.length)
+				this.$events[name] = evt;
+			else
+				this.$events[name] = undefined;
+		}
+	}
+	return this;
+};
+
+Agent.prototype.on = function(name, fn) {
+
+	if (!fn.$once)
+		this.$free = false;
+
+	if (this.$events[name])
+		this.$events[name].push(fn);
+	else
+		this.$events[name] = [fn];
+	return this;
+};
+
+Agent.prototype.once = function(name, fn) {
+	fn.$once = true;
+	return this.on(name, fn);
+};
+
+Agent.prototype.removeListener = function(name, fn) {
+	var evt = this.$events[name];
+	if (evt) {
+		evt = evt.remove(n => n === fn);
+		if (evt.length)
+			this.$events[name] = evt;
+		else
+			this.$events[name] = undefined;
+	}
+	return this;
+};
+
+Agent.prototype.removeAllListeners = function(name) {
+	if (name === true)
+		this.$events = EMPTYOBJECT;
+	else if (name)
+		this.$events[name] = undefined;
+	else
+		this.$events[name] = {};
+	return this;
 };
 
 Agent.prototype.clear = function() {
@@ -719,9 +778,8 @@ Agent.prototype.skip = function(name) {
 };
 
 Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
-	var self = this;
 	console.log('Agent.primary() is not supported.');
-	return self;
+	return this;
 };
 
 Agent.prototype.expected = function(name, index, property) {
@@ -947,6 +1005,8 @@ Agent.prototype.insert = function(name, table) {
 			data.$inc = undefined;
 		}
 
+		self.$events.query && self.emit('query', name, builder.debug('insert'));
+
 		db.insert(data.$set, function(err, response) {
 			var id = response ? (response.insertedCount ? (response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null) : null;
 			self.id = id;
@@ -983,10 +1043,10 @@ Agent.prototype.listing = function(name, table) {
 			if (err)
 				return callback(err);
 
+			self.$events.query && self.emit('query', name, builder.debug('listing'));
 			var output = {};
 			output.count = count;
 			cursor = db.find(builder.builder);
-
 			builder._fields && cursor.project(builder._fields);
 			builder._order && cursor.sort(builder._order);
 			builder._take && cursor.limit(builder._take);
@@ -1019,6 +1079,8 @@ Agent.prototype.select = function(name, table) {
 	var fn = function(db, builder, helper, callback) {
 
 		builder.prepare();
+
+		self.$events.query && self.emit('query', name, builder.debug('select'));
 
 		if (builder._isfirst) {
 			if (builder._fields)
@@ -1061,6 +1123,8 @@ Agent.prototype.compare = function(name, table, obj, keys) {
 
 		!builder._fields && builder.fields.apply(builder, prop);
 		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('compare'));
+
 		db.findOne(builder.builder, builder._fields, function(err, doc) {
 
 			if (err)
@@ -1106,6 +1170,7 @@ Agent.prototype.exists = function(name, table) {
 
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('exists'));
 		db.findOne(builder.builder, function(err, doc) {
 			callback(err, doc ? true : false);
 		});
@@ -1129,6 +1194,7 @@ Agent.prototype.count = function(name, table, column) {
 
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('count'));
 		db.find(builder.builder).count(callback);
 	};
 
@@ -1149,6 +1215,7 @@ Agent.prototype.max = function(name, table, column) {
 
 		builder.prepare();
 		builder.first();
+		self.$events.query && self.emit('query', name, builder.debug('max'));
 
 		var cursor = db.find(builder.builder);
 		cursor.sort(builder._order);
@@ -1180,6 +1247,7 @@ Agent.prototype.min = function(name, table, column) {
 
 		builder.prepare();
 		builder.first();
+		self.$events.query && self.emit('query', name, builder.debug('min'));
 
 		var cursor = db.find(builder.builder);
 		cursor.sort(builder._order);
@@ -1218,12 +1286,15 @@ Agent.prototype.update = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
+
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
 			callback(new Error('No data for update.'), null);
 			return;
 		}
+
+		self.$events.query && self.emit('query', name, builder.debug('update'));
 
 		if (builder._isfirst) {
 			db.updateOne(builder.builder, builder.data, function(err, response) {
@@ -1253,6 +1324,7 @@ Agent.prototype.delete = function(name, table) {
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('delete'));
 		if (builder._isfirst) {
 			db.remove(builder.builder, { single: true }, function(err, response) {
 				callback(err, response ? (response.result.nRemoved || response.result.n) : 0);
@@ -1444,7 +1516,7 @@ Agent.prototype._prepare = function(callback) {
 				}
 
 				self.results[item.name] = response;
-				self.emit('data', item.name, response);
+				self.$events.data && self.emit('data', item.name, response);
 				next();
 			});
 			return;
@@ -1466,11 +1538,11 @@ Agent.prototype._prepare = function(callback) {
 			}
 
 			self.results[item.name] = response;
-			self.emit('data', item.name, response);
+			self.$events.data && self.emit('data', item.name, response);
 
 			if (!self.$when) {
 				next();
-				return
+				return;
 			}
 
 			var tmp = self.$when[item.name];
@@ -1499,7 +1571,7 @@ Agent.prototype._prepare = function(callback) {
 		} else if (self.errors.length)
 			err = self.errors;
 
-		self.emit('end', err, self.results, self.time);
+		self.$events.end && self.emit('end', err, self.results, self.time);
 		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
 	});
 
@@ -1701,16 +1773,16 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback
 Agent.init = function(conn, debug) {
 	Agent.debug = debug ? true : false;
 
-	framework.wait('database');
+	F.wait('database');
 	database.connect(conn, function(err, db) {
 		if (err)
 			throw err;
 		CONNECTIONS[conn] = db;
-		framework.wait('database');
-		framework.emit('database');
+		F.wait('database');
+		F.emit('database');
 	});
 
-	framework.database = function(errorBuilder) {
+	F.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder);
 	};
 };
@@ -1734,7 +1806,7 @@ ObjectID.parse = function(value, isArray) {
 
 ObjectID.parseArray = function(value) {
 
-	if (typeof(value) === STRING)
+	if (typeof(value) === 'string')
 		value = value.split(',');
 
 	var arr = [];
