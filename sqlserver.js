@@ -1,5 +1,4 @@
 const database = require('mssql');
-const Events = require('events');
 const Parser = require('url');
 const queries = {};
 const columns_cache = {};
@@ -650,6 +649,7 @@ function Agent(options, error, id) {
 	this.options = options;
 	this.db = null;
 	this.clear();
+	this.$events = {};
 
 	// Hidden:
 	// this.time;
@@ -668,19 +668,71 @@ Agent.prototype = {
 	}
 };
 
-Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
-	constructor: {
-		value: Agent,
-		enumberable: false
-	}
-});
-
 Agent.connect = function(conn, callback) {
 	callback && callback(null);
 	var id = (Math.random() * 1000000) >> 0;
 	return function(error) {
 		return new Agent(conn, error, id);
 	};
+};
+
+Agent.prototype.emit = function(name, a, b, c, d, e, f, g) {
+	var evt = this.$events[name];
+	if (evt) {
+		var clean = false;
+		for (var i = 0, length = evt.length; i < length; i++) {
+			if (evt[i].$once)
+				clean = true;
+			evt[i].call(this, a, b, c, d, e, f, g);
+		}
+		if (clean) {
+			evt = evt.remove(n => n.$once);
+			if (evt.length)
+				this.$events[name] = evt;
+			else
+				this.$events[name] = undefined;
+		}
+	}
+	return this;
+};
+
+Agent.prototype.on = function(name, fn) {
+
+	if (!fn.$once)
+		this.$free = false;
+
+	if (this.$events[name])
+		this.$events[name].push(fn);
+	else
+		this.$events[name] = [fn];
+	return this;
+};
+
+Agent.prototype.once = function(name, fn) {
+	fn.$once = true;
+	return this.on(name, fn);
+};
+
+Agent.prototype.removeListener = function(name, fn) {
+	var evt = this.$events[name];
+	if (evt) {
+		evt = evt.remove(n => n === fn);
+		if (evt.length)
+			this.$events[name] = evt;
+		else
+			this.$events[name] = undefined;
+	}
+	return this;
+};
+
+Agent.prototype.removeAllListeners = function(name) {
+	if (name === true)
+		this.$events = EMPTYOBJECT;
+	else if (name)
+		this.$events[name] = undefined;
+	else
+		this.$events[name] = {};
+	return this;
 };
 
 // Debug mode (output to console)
@@ -1527,8 +1579,7 @@ Agent.prototype._prepare = function(callback) {
 				item.first = isFIRST(item.$query);
 
 			Agent.debug && console.log(self.debugname, item.name, item.$query);
-
-			self.emit('query', item.name, item.$query, item.$params);
+			self.$events.query && self.emit('query', item.name, item.$query, item.$params);
 
 			var request = new database.Request(self.$transaction ? self.$transaction : self.db);
 			item.$params && prepare_params_request(request, item.$params);
@@ -1612,7 +1663,7 @@ Agent.prototype._prepare = function(callback) {
 		} else if (self.errors.length)
 			err = self.errors;
 
-		self.emit('end', err, self.results, self.time);
+		self.$events.end && self.emit('end', err, self.results, self.time);
 		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
 	});
 
@@ -1661,7 +1712,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 			self.results[item.listing + '_items'] = null;
 		}
 
-		self.emit('data', item.target || item.name, self.results);
+		self.$events.data && self.emit('data', item.target || item.name, self.results);
 		self.last = item.name;
 		self.$bindwhen(item.name);
 		return;
@@ -1709,7 +1760,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 		self.results[item.name] = diff.length ? { diff: diff, record: val, value: item.value } : false;
 	}
 
-	self.emit('data', item.target || item.name, self.results);
+	self.$events.data && self.emit('data', item.target || item.name, self.results);
 	self.last = item.name;
 	self.$bindwhen(item.name);
 };
