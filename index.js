@@ -9,14 +9,11 @@ Array.prototype.sqlagent = function(onItem, callback) {
 	}
 
 	onItem.call(self, item, function(val) {
-
 		if (val === false) {
 			self.length = 0;
 			callback();
-			return;
-		}
-
-		setImmediate(() => self.sqlagent(onItem, callback));
+		} else
+			setImmediate(() => self.sqlagent(onItem, callback));
 	});
 
 	return self;
