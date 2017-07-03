@@ -1,5 +1,4 @@
 const database = require('pg');
-const url = require('url')
 const lo = require('./pg-lo');
 const queries = {};
 const columns_cache = {};
@@ -14,24 +13,6 @@ const REG_QUOTE = /\"/g;
 database.defaults.poolIdleTimeout = 10;
 
 require('./index');
-
-function connStrParser (connstr) {
-  const params = url.parse(connstr)
-  const auth = params.auth.split(':')
-
-  const config = {
-    user: auth[0],
-    password: auth[1],
-    host: params.hostname,
-    port: params.port,
-    database: params.pathname.split('/')[1],
-    ssl: false,
-    max: 20, //set pool max size to 20
-    min: 4, //set min pool size to 4
-    idleTimeoutMillis: 1000 //close idle clients after 1 second
-  }
-  return config
-}
 
 function SqlBuilder(skip, take, agent) {
 	this.agent = agent;
@@ -1762,9 +1743,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	}
 
 	Agent.debug && console.log(self.debugname, '----- exec');
-
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
 			if (!self.errors)
@@ -1803,8 +1782,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 		buffersize = tmp;
 	}
 
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1844,8 +1822,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 Agent.prototype.writeBuffer = function(buffer, callback) {
 	var self = this;
 
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1888,8 +1865,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 		buffersize = tmp;
 	}
 
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	database.connect(self.options, function(err, client, done) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
