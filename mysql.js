@@ -11,8 +11,7 @@ const REG_QUERY = /\*/i;
 
 require('./index');
 
-function SqlBuilder(skip, take, agent) {
-	this.agent = agent;
+function SqlBuilder(skip, take) {
 	this.builder = [];
 	this._order = null;
 	this._skip = skip >= 0 ? skip : 0;
