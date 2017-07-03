@@ -97,7 +97,7 @@ SqlBuilder.prototype.clone = function() {
 	return builder.replace(this);
 };
 
-SqlBuilder.prototype.join = function(name, on, type) {
+SqlBuilder.prototype.join = function(name) {
 	throw new Error('SqlBuilder.join(' + name + ') is not supported.');
 };
 
@@ -383,17 +383,17 @@ SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 	return value;
 };
 
-SqlBuilder.column = function(name, schema) {
+SqlBuilder.column = function(name) {
 	console.log('SqlBuilder.column() is not supported.');
 	return name;
 };
 
-SqlBuilder.prototype.group = function(names) {
+SqlBuilder.prototype.group = function() {
 	console.log('SqlBuilder.group() is not supported.');
 	return this;
 };
 
-SqlBuilder.prototype.having = function(condition) {
+SqlBuilder.prototype.having = function() {
 	console.log('SqlBuilder.having() is not supported.');
 	return this;
 };
@@ -505,7 +505,7 @@ SqlBuilder.prototype.query = function(name, value) {
 	return this.$scope(name, value, undefined, 10);
 };
 
-SqlBuilder.prototype.sql = function(obj) {
+SqlBuilder.prototype.sql = function() {
 	console.log('SqlBuilder.sql() is not supported.');
 	return this;
 };
@@ -515,7 +515,7 @@ SqlBuilder.prototype.toString = function() {
 	return this;
 };
 
-SqlBuilder.prototype.toQuery = function(query) {
+SqlBuilder.prototype.toQuery = function() {
 	console.log('SqlBuilder.toQuery() is not supported.');
 	return this;
 };
@@ -777,7 +777,7 @@ Agent.prototype.skip = function(name) {
 	return self;
 };
 
-Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
+Agent.prototype.primaryKey = Agent.prototype.primary = function() {
 	console.log('Agent.primary() is not supported.');
 	return this;
 };
@@ -1267,11 +1267,11 @@ Agent.prototype.min = function(name, table, column) {
 	return condition;
 };
 
-Agent.prototype.avg = function(name, table, column) {
+Agent.prototype.avg = function(name) {
 	throw new Error('Agent.avg(' + name + ') is not supported now.');
 };
 
-Agent.prototype.updateOnly = function(name, table, values, only) {
+Agent.prototype.updateOnly = function(name, table, values) {
 	throw new Error('Agent.updateOnly(' + name + ') is not supported now.');
 };
 
@@ -1785,6 +1785,8 @@ Agent.init = function(conn, debug) {
 	F.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder);
 	};
+
+	return Agent;
 };
 
 module.exports = Agent;
