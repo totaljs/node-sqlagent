@@ -1,6 +1,7 @@
-const database = require('pg');
-const url = require('url')
-const lo = require('./pg-lo');
+const Database = require('pg');
+const Url = require('url');
+const Qs = require('querystring');
+const Lo = require('./pg-lo');
 const queries = {};
 const columns_cache = {};
 const REG_PARAMS = /\#\d+\#/g;
@@ -10,27 +11,30 @@ const REG_ESCAPE_2 = /\\/g;
 const REG_ARGUMNETS = /\?/g;
 const REG_COLUMN = /^(\!{1,}|\s)*/;
 const REG_QUOTE = /\"/g;
-
-database.defaults.poolIdleTimeout = 10;
+const CACHE = {};
 
 require('./index');
 
-function connStrParser (connstr) {
-  const params = url.parse(connstr)
-  const auth = params.auth.split(':')
+function connectionstring(conn) {
 
-  const config = {
-    user: auth[0],
-    password: auth[1],
-    host: params.hostname,
-    port: params.port,
-    database: params.pathname.split('/')[1],
-    ssl: false,
-    max: 20, //set pool max size to 20
-    min: 4, //set min pool size to 4
-    idleTimeoutMillis: 1000 //close idle clients after 1 second
-  }
-  return config
+	if (CACHE[conn])
+		return CACHE[conn];
+
+	var params = Url.parse(conn);
+	var auth = params.auth.split(':');
+	var q = Qs.parse(params.query);
+
+	return CACHE[conn] = {
+		user: auth[0],
+		password: auth[1],
+		host: params.hostname,
+		port: params.port,
+		database: params.pathname.split('/')[1],
+		ssl: q.ssl === '1' || q.ssl === 'true' || q.ssl === 'on',
+		max: +(q.max || '20'),
+		min: +(q.min || '4'),
+		idleTimeoutMillis: +(q.timeout || '1000')
+	};
 }
 
 function SqlBuilder(skip, take, agent) {
@@ -1763,8 +1767,8 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
 	Agent.debug && console.log(self.debugname, '----- exec');
 
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	var pool = new Database.Pool(connectionstring(self.options));
+	pool.connect(function(err, client, done) {
 
 		if (err) {
 			if (!self.errors)
@@ -1803,8 +1807,8 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 		buffersize = tmp;
 	}
 
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	var pool = new Database.Pool(connectionstring(self.options));
+	pool.connect(function(err, client, done) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1819,7 +1823,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 				return callback(err);
 			}
 
-			lo.create(client).writeStream(buffersize || 16384, function(err, oid, stream) {
+			Lo.create(client).writeStream(buffersize || 16384, function(err, oid, stream) {
 
 				if (err) {
 					client.query('ROLLBACK', done);
@@ -1843,9 +1847,8 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 
 Agent.prototype.writeBuffer = function(buffer, callback) {
 	var self = this;
-
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	var pool = new Database.Pool(connectionstring(self.options));
+	pool.connect(function(err, client, done) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1860,7 +1863,7 @@ Agent.prototype.writeBuffer = function(buffer, callback) {
 				return callback(err);
 			}
 
-			lo.create(client).writeStream(buffer.length, function(err, oid, stream) {
+			Lo.create(client).writeStream(buffer.length, function(err, oid, stream) {
 
 				if (err) {
 					client.query('ROLLBACK', done);
@@ -1888,8 +1891,8 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 		buffersize = tmp;
 	}
 
-  let pool = new database.Pool(connStrParser(self.options))
-  pool.connect(function(err, client, done) {
+	var pool = new Database.Pool(connectionstring(self.options));
+	pool.connect(function(err, client, done) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1904,7 +1907,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 				return callback(err);
 			}
 
-			lo.create(client).readStream(oid, buffersize || 16384, function(err, size, stream) {
+			Lo.create(client).readStream(oid, buffersize || 16384, function(err, size, stream) {
 
 				if (err) {
 					done();
@@ -1959,8 +1962,8 @@ function pg_escape(val){
 		return 'NULL';
 	var backslash = ~val.indexOf('\\');
 	var prefix = backslash ? 'E' : '';
-	val = val.replace(REG_ESCAPE_1, "''").replace(REG_ESCAPE_2, '\\\\');
-	return prefix + "'" + val + "'";
+	val = val.replace(REG_ESCAPE_1, '\'\'').replace(REG_ESCAPE_2, '\\\\');
+	return prefix + '\'' + val + '\'';
 }
 
 function dateToString(dt) {

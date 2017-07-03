@@ -38,6 +38,13 @@ __IMPORTANT__:
 // Example: postgre://user:password@127.0.0.1/database
 var Agent = require('sqlagent/pg').connect('connetion-string-to-postgresql');
 var sql = new Agent();
+
+// Advanced connection string:
+// Example: postgre://user:password@127.0.0.1/database?ssl=true&max=100&min=1&timeout=1000
+// ssl     = {Boolean} enables SSL
+// min     = {Number} sets min. pool size
+// max     = {Number} sets max. pool size
+// timeout = {Number} closes idle clients
 ```
 
 #### MySQL
