@@ -12,7 +12,8 @@ const REG_ARGUMNETS = /\?/g;
 const REG_COLUMN = /^(\!{1,}|\s)*/;
 const REG_QUOTE = /\"/g;
 const CACHE = {};
-let pool;
+var pool;
+
 require('./index');
 
 function connectionstring(conn) {
@@ -38,10 +39,7 @@ function connectionstring(conn) {
 }
 
 function createpool(options) {
-  if (!pool) {
-    pool = new Database.Pool(connectionstring(options))
-  }
-  return pool
+	return pool ? pool : (pool = new Database.Pool(connectionstring(options)));
 }
 
 function SqlBuilder(skip, take, agent) {
