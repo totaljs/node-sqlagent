@@ -12,7 +12,7 @@ const REG_ARGUMNETS = /\?/g;
 const REG_COLUMN = /^(\!{1,}|\s)*/;
 const REG_QUOTE = /\"/g;
 const CACHE = {};
-
+let pool;
 require('./index');
 
 function connectionstring(conn) {
@@ -35,6 +35,13 @@ function connectionstring(conn) {
 		min: +(q.min || '4'),
 		idleTimeoutMillis: +(q.timeout || '1000')
 	};
+}
+
+function createpool(options) {
+  if (!pool) {
+    pool = new Database.Pool(connectionstring(options))
+  }
+  return pool
 }
 
 function SqlBuilder(skip, take, agent) {
@@ -1767,7 +1774,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
 	Agent.debug && console.log(self.debugname, '----- exec');
 
-	var pool = new Database.Pool(connectionstring(self.options));
+	var pool = createpool(self.options);
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1807,7 +1814,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 		buffersize = tmp;
 	}
 
-	var pool = new Database.Pool(connectionstring(self.options));
+	var pool = createpool(self.options);
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1847,7 +1854,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 
 Agent.prototype.writeBuffer = function(buffer, callback) {
 	var self = this;
-	var pool = new Database.Pool(connectionstring(self.options));
+	var pool = createpool(self.options);
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1891,7 +1898,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 		buffersize = tmp;
 	}
 
-	var pool = new Database.Pool(connectionstring(self.options));
+	var pool = createpool(self.options);
 	pool.connect(function(err, client, done) {
 
 		if (err) {
