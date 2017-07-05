@@ -1416,6 +1416,8 @@ nosql.exec(function(err, results){
 });
 ```
 
+## Contributors
+
 | Contributor | Type | E-mail |
 |-------------|------|--------|
 | [Peter Širka](https://github.com/JozefGula) | author + support | <petersirka@gmail.com> |
