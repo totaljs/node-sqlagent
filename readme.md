@@ -1416,6 +1416,12 @@ nosql.exec(function(err, results){
 });
 ```
 
+| Contributor | Type | E-mail |
+|-------------|------|--------|
+| [Peter Širka](https://github.com/JozefGula) | author + support | <petersirka@gmail.com> |
+| [Martin Smola](https://github.com/molda) | contributor + support | <smola.martin@gmail.com> |
+| [Jay Kelkar](https://github.com/jkelkar) | contributor | <jkelkar@gmail.com> |
+
 ## Contact
 
 Do you have any questions? Contact us <https://www.totaljs.com/contact/>

@@ -5,6 +5,17 @@
     "engines": {
         "node": ">=0.8.0"
     },
+    "contributors": [{
+        "name": "Peter Širka",
+        "email": "petersirka@gmail.com"
+    }, {
+        "name": "Jay Kelkar",
+        "email": "jkelkar@gmail.com"
+    }, {
+        "name": "Martin Smola",
+        "email": "smola.martin@gmail.com"
+    }],
+
     "license": "MIT",
     "name": "sqlagent",
     "repository": {
