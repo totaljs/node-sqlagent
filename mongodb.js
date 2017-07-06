@@ -1749,7 +1749,7 @@ Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback
 		meta = tmp;
 	}
 
-	connect(this.connection, function(err, db) {
+	connect(self.connection, function(err, db) {
 
 		if (err) {
 			self.errors && self.errors.push(err);
@@ -1779,7 +1779,7 @@ Agent.init = function(conn, debug) {
 			throw err;
 		CONNECTIONS[conn] = db;
 		F.wait('database');
-		F.emit('database');
+		F.emit('database', conn);
 	});
 
 	F.database = function(errorBuilder) {
