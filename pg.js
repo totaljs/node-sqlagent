@@ -18,6 +18,9 @@ require('./index');
 
 function connectionstring(conn) {
 
+	if (typeof(conn) === 'object')
+		return conn;
+
 	if (CACHE[conn])
 		return CACHE[conn];
 
