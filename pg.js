@@ -42,7 +42,7 @@ function connectionstring(conn) {
 }
 
 function createpool(options) {
-	var key = options.host + '_' + options.database;
+	var key = options.host + '_' + options.database + '_' + (options.port || '');
 	return pools[key] ? pools[key] : (pools[key] = new Database.Pool(connectionstring(options)));
 }
 
