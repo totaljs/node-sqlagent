@@ -983,7 +983,7 @@ Agent.prototype.insert = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
-		var self = this;
+
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
