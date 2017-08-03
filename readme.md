@@ -497,13 +497,13 @@ sql.exec();
 ### If not or If exists
 
 ```javascript
-instance.ifnot('user', function(error, response) {
+instance.ifnot('user', function(error, response, value) {
     // error === ErrorBuilder
     // It will be executed when the results `user` contains a negative value or array.length === 0
     // Is executed in order
 });
 
-instance.ifexists('user', function(error, response) {
+instance.ifexists('user', function(error, response, value) {
     // error === ErrorBuilder
     // It will be executed when the results `user` contains a positive value or array.length > 0
     // Is executed in order

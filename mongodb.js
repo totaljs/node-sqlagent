@@ -1354,7 +1354,7 @@ Agent.prototype.ifnot = function(name, fn) {
 				return resume();
 		} else if (value)
 			return resume();
-		fn.call(self, error, response);
+		fn.call(self, error, response, value);
 		setImmediate(resume);
 	});
 	return self;
@@ -1371,7 +1371,7 @@ Agent.prototype.ifexists = function(name, fn) {
 		} else if (!value)
 			return resume();
 
-		fn.call(self, error, response);
+		fn.call(self, error, response, value);
 		setImmediate(resume);
 	});
 	return self;
