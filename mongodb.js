@@ -1555,7 +1555,7 @@ Agent.prototype._prepare = function(callback) {
 
 	}, function() {
 
-		if (Agent.debug) {
+		if (Agent.debug || self.debug) {
 			self.time = Date.now() - self.debugtime;
 			console.log(self.debugname, '----- done (' + self.time + ' ms)');
 		}
@@ -1582,7 +1582,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
 	var self = this;
 
-	if (Agent.debug) {
+	if (Agent.debug || self.debug) {
 		self.debugname = 'sqlagent/mongodb (' + Math.floor(Math.random() * 1000) + ')';
 		self.debugtime = Date.now();
 	}
@@ -1597,7 +1597,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		return self;
 	}
 
-	Agent.debug && console.log(self.debugname, '----- exec');
+	(Agent.debug || self.debug) && console.log(self.debugname, '----- exec');
 
 	connect(self.connection, function(err, db) {
 
