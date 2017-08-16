@@ -80,6 +80,9 @@ require('sqlagent/mongodb').init('connetion-string-to-mongodb', [debug]); // deb
 var sql = DATABASE();
 // sql === SqlAgent
 
+// +v9.9.6 enable debugging
+sql.debug = true;
+
 // When you use MongoDB:
 // var nosql = DATABASE([ErrorBuilder]);
 var nosql = DATABASE();
