@@ -1578,7 +1578,7 @@ Agent.prototype._prepare = function(callback) {
 			if (!item.first)
 				item.first = isFIRST(item.$query);
 
-			Agent.debug && console.log(self.debugname, item.name, item.$query);
+			(Agent.debug || self.debug) && console.log(self.debugname, item.name, item.$query);
 			self.$events.query && self.emit('query', item.name, item.$query, item.$params);
 
 			var request = new database.Request(self.$transaction ? self.$transaction : self.db);
@@ -1592,7 +1592,7 @@ Agent.prototype._prepare = function(callback) {
 		}
 
 		if (item.type === 'begin') {
-			Agent.debug && console.log(self.debugname, 'begin transaction');
+			(Agent.debug || self.debug) && console.log(self.debugname, 'begin transaction');
 			self.$transaction = new database.Transaction(self.db);
 			self.$transaction.begin(function(err) {
 				if (err) {
@@ -1611,7 +1611,7 @@ Agent.prototype._prepare = function(callback) {
 		if (item.type === 'end') {
 			self.isTransaction = false;
 			if (self.isRollback) {
-				Agent.debug && console.log(self.debugname, 'rollback transaction');
+				(Agent.debug || self.debug) && console.log(self.debugname, 'rollback transaction');
 				self.$transaction.rollback(function(err) {
 					self.$transaction = null;
 					if (!err)
@@ -1624,7 +1624,7 @@ Agent.prototype._prepare = function(callback) {
 				return;
 			}
 
-			Agent.debug && console.log(self.debugname, 'commit transaction');
+			(Agent.debug || self.debug) && console.log(self.debugname, 'commit transaction');
 			self.$transaction.commit(function(err) {
 
 				if (!err) {
@@ -1647,7 +1647,7 @@ Agent.prototype._prepare = function(callback) {
 
 	}, function() {
 
-		if (Agent.debug) {
+		if (Agent.debug || self.debug) {
 			self.time = Date.now() - self.debugtime;
 			console.log(self.debugname, '----- done (' + self.time + ' ms)');
 		}
@@ -1769,7 +1769,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
 	var self = this;
 
-	if (Agent.debug) {
+	if (Agent.debug || self.debug) {
 		self.debugname = 'sqlagent/sqlserver (' + Math.floor(Math.random() * 1000) + ')';
 		self.debugtime = Date.now();
 	}
@@ -1784,7 +1784,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		return self;
 	}
 
-	Agent.debug && console.log(self.debugname, '----- exec');
+	(Agent.debug || self.debug) && console.log(self.debugname, '----- exec');
 
 	if (!pools_cache[self.$conn]) {
 		if (typeof(self.options) === 'string') {
