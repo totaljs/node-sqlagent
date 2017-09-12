@@ -1428,6 +1428,8 @@ nosql.exec(function(err, results){
 
 Do you have any questions? Contact us <https://www.totaljs.com/contact/>
 
+[![Professional Support](https://www.totaljs.com/img/badge-support.svg)](https://www.totaljs.com/support/) [![Chat with contributors](https://www.totaljs.com/img/badge-chat.svg)](https://messenger.totaljs.com)
+
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
 [license-url]: license.txt
 
