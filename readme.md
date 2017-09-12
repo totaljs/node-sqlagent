@@ -2,12 +2,14 @@
 
 [![Professional Support](https://www.totaljs.com/img/badge-support.svg)](https://www.totaljs.com/support/) [![Chat with contributors](https://www.totaljs.com/img/badge-chat.svg)](https://messenger.totaljs.com) [![NPM version][npm-version-image]][npm-url] [![NPM downloads][npm-downloads-image]][npm-url] [![MIT License][license-image]][license-url]
 
-`npm install sqlagent`
+- installation `$ npm install sqlagent`
 
-- for PostgreSQL `npm install pg`
-- for MySQL `npm install mysql`
-- for MS SQL Server `npm install mssql`
-- for MongoDB `npm install mongodb`
+---
+
+- for PostgreSQL `$ npm install pg`
+- for MySQL `$ npm install mysql`
+- for MS SQL Server `$ npm install mssql`
+- for MongoDB `$ npm install mongodb`
 
 ---
 
