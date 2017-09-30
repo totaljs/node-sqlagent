@@ -11,6 +11,7 @@ const REG_ESCAPE_2 = /\\/g;
 const REG_ARGUMNETS = /\?/g;
 const REG_COLUMN = /^(\!{1,}|\s)*/;
 const REG_QUOTE = /\"/g;
+const REG_NUMBER = /^\d+$/;
 const CACHE = {};
 const pools = {};
 
@@ -1700,14 +1701,12 @@ Agent.prototype.$bind = function(item, err, rows) {
 	}
 
 	if (item.type === 'insert') {
+
 		if (rows.length) {
-			var tmp = parseInt(rows[0].identity);
-			if (isNaN(tmp)) {
-				self.id = rows[0].identity;
-			} else {
-				self.id = tmp;
-				rows[0].identity = tmp;
-			}
+			var val = rows[0].identity;
+			if (typeof(val) === 'string' && REG_NUMBER.tests(val))
+				rows[0].identity = val = +val;
+			self.id = val;
 		} else
 			self.id = null;
 
