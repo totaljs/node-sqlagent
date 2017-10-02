@@ -1704,7 +1704,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 
 		if (rows.length) {
 			var val = rows[0].identity;
-			if (typeof(val) === 'string' && REG_NUMBER.tests(val))
+			if (typeof(val) === 'string' && REG_NUMBER.test(val))
 				rows[0].identity = val = +val;
 			self.id = val;
 		} else
