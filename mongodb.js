@@ -1082,20 +1082,19 @@ Agent.prototype.select = function(name, table) {
 
 		self.$events.query && self.emit('query', name, builder.debug('select'));
 
-		if (builder._isfirst) {
+		if (builder._isfirst && !builder._order) {
 			if (builder._fields)
 				db.findOne(builder.builder, builder._fields, callback);
 			else
 				db.findOne(builder.builder, callback);
-			return;
+		} else {
+			var cursor = db.find(builder.builder);
+			builder._fields && cursor.project(builder._fields);
+			builder._order && cursor.sort(builder._order);
+			builder._take && cursor.limit(builder._take);
+			builder._skip && cursor.skip(builder._skip);
+			cursor.toArray(callback);
 		}
-
-		var cursor = db.find(builder.builder);
-		builder._fields && cursor.project(builder._fields);
-		builder._order && cursor.sort(builder._order);
-		builder._take && cursor.limit(builder._take);
-		builder._skip && cursor.skip(builder._skip);
-		cursor.toArray(callback);
 	};
 
 	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
@@ -1537,8 +1536,9 @@ Agent.prototype._prepare = function(callback) {
 				return;
 			}
 
-			self.results[item.name] = response;
-			self.$events.data && self.emit('data', item.name, response);
+			var val = item.condition._isfirst && item.condition._order ? (response instanceof Array ? response[0] : response) : response;
+			self.results[item.name] = val;
+			self.$events.data && self.emit('data', item.name, val);
 
 			if (!self.$when) {
 				next();
