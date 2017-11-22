@@ -5,7 +5,7 @@ const CONNECTIONS = {};
 const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 const FILEREADERFILTER = {};
-const REG_APO = /\'/;
+const REG_APO = /'/;
 
 require('./index');
 
@@ -624,6 +624,10 @@ Agent.prototype = {
 			return self.$id;
 		};
 	}
+};
+
+Agent.embedded = function() {
+	require('mongodb-nosqlembedded').init(Agent);
 };
 
 // Debug mode (output to console)
