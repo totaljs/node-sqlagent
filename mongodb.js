@@ -5,7 +5,7 @@ const CONNECTIONS = {};
 const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 const FILEREADERFILTER = {};
-const REG_APO = /\'/;
+const REG_APO = /'/;
 
 require('./index');
 

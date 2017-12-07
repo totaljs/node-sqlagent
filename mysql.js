@@ -3,10 +3,10 @@ const Parser = require('url');
 const queries = {};
 const columns_cache = {};
 const pools_cache = {};
-const REG_COLUMN = /^(\!{1,}|\s)*/;
-const REG_COLUMN_CAST = /\`]/g;
+const REG_COLUMN = /^(!{1,}|\s)*/;
+const REG_COLUMN_CAST = /`]/g;
 const REG_ARGUMENT = /\?/g;
-const REG_PARAMS = /\#\d+\#/g;
+const REG_PARAMS = /#\d+#/g;
 const REG_QUERY = /\*/i;
 
 require('./index');

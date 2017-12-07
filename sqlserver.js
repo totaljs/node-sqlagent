@@ -4,10 +4,10 @@ const queries = {};
 const columns_cache = {};
 const pools_cache = {};
 const REG_SELECT = /select/i;
-const REG_CUSTOM = /\#\d+\#/g;
+const REG_CUSTOM = /#\d+#/g;
 const REG_WILDCARD = /\*/i;
-const REG_APO = /\'/g;
-const REG_COLUMN = /^(\!{1,}|\s)*/;
+const REG_APO = /'/g;
+const REG_COLUMN = /^(!{1,}|\s)*/;
 const REG_COLUMN_CAST = /\[|\]/g;
 const REG_ARGUMENT = /\?/g;
 
