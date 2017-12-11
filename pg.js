@@ -2000,6 +2000,7 @@ Agent.init = function(conn, debug) {
 	framework.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder);
 	};
+	EMIT('database');
 };
 
 module.exports = Agent;

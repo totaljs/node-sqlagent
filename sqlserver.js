@@ -1925,9 +1925,7 @@ function prepare_params_request(request, params) {
 }
 
 function isFIRST(query) {
-	if (!query)
-		return false;
-	return query.substring(0, 13).toLowerCase() === 'select top 1';
+	return query ? query.substring(0, 13).toLowerCase() === 'select top 1' : false;
 }
 
 Agent.init = function(conn, debug) {
@@ -1936,6 +1934,7 @@ Agent.init = function(conn, debug) {
 	framework.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder, id);
 	};
+	EMIT('database');
 };
 
 Agent.escape = Agent.prototype.escape = SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
