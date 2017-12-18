@@ -1774,6 +1774,7 @@ Agent.init = function(conn, debug) {
 	framework.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder, id);
 	};
+	EMIT('database');
 };
 
 module.exports = Agent;

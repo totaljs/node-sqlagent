@@ -626,6 +626,10 @@ Agent.prototype = {
 	}
 };
 
+Agent.embedded = function() {
+	require('mongodb-nosqlembedded').init(Agent);
+};
+
 // Debug mode (output to console)
 Agent.debug = false;
 
@@ -636,6 +640,14 @@ Agent.connect = function(conn, callback) {
 				return callback(err);
 			throw err;
 		}
+
+		if (db.db) {
+			// new mongodb
+			if (conn[conn.length - 1] === '/')
+				conn = conn.substring(0, conn.length - 1);
+			db = db.db(conn.substring(conn.lastIndexOf('/') + 1));
+		}
+
 		CONNECTIONS[conn] = db;
 		callback && callback();
 	});
@@ -1774,12 +1786,16 @@ Agent.init = function(conn, debug) {
 	Agent.debug = debug ? true : false;
 
 	F.wait('database');
+
 	database.connect(conn, function(err, db) {
 		if (err)
 			throw err;
+
+
+
 		CONNECTIONS[conn] = db;
 		F.wait('database');
-		F.emit('database', conn);
+		EMIT('database', conn);
 	});
 
 	F.database = function(errorBuilder) {

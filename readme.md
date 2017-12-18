@@ -166,13 +166,13 @@ sql.push('users', 'users', function(collection, callback) {
     pipeline.push({ $match: $match });
     pipeline.push({ $group: $group });
 
-    collection.aggregate(pipeline, callback);    
+    collection.aggregate(pipeline, callback);
 });
 
 // OR
 
 sql.push('users', 'users', function(collection, callback) {
-    collection.findOne({ name: 'Peter' }, { name: 1, age: 1 }).toArray(callback); 
+    collection.findOne({ name: 'Peter' }, { name: 1, age: 1 }).toArray(callback);
 });
 ```
 
@@ -862,7 +862,7 @@ sql.exec(function(err, response) {
 
 ### Events
 
-```
+```javascript
 sql.on('query', function(name, query, params){});
 sql.on('data', function(name, response){});
 sql.on('end', function(err, response, time){});
@@ -1358,7 +1358,7 @@ creates escaped SQL query (internal)
 sql.writeStream(Fs.createReadStream('/file.png'), function(err, loid) {
     // Now is the file inserted
     // Where is the file stored?
-    
+
     // loid === NUMBER
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
@@ -1367,7 +1367,7 @@ sql.writeStream(Fs.createReadStream('/file.png'), function(err, loid) {
 sql.writeBuffer(Buffer.from('Peter Širka', 'utf8'), function(err, loid) {
     // Now is the buffer inserted
     // Where is the buffer stored?
-    
+
     // loid === NUMBER
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
@@ -1390,7 +1390,7 @@ nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
 
 // nosql.writeBuffer(id, buffer, filename, [metadata], [options], callback)
 nosql.writeBuffer(new ObjectID(), Buffer.from('Peter Širka', 'utf8'), 'petersirka.txt', function(err) {
-    // Now is the buffer inserted    
+    // Now is the buffer inserted
 });
 
 // nosql.readFile(id, [options], callback(err, gs, close, metadata, size, filename))
@@ -1413,6 +1413,16 @@ nosql.select('fs.files').make(function(builder){
 
 nosql.exec(function(err, results){
     console.log(results);
+});
+```
+
+## Global events
+
+__Global events__:
+
+```javascript
+ON('database', function() {
+    // Database is ready
 });
 ```
 
