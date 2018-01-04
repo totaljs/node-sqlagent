@@ -1614,8 +1614,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	connect(self.connection, function(err, db) {
 
 		if (err) {
-			if (!self.errors)
-				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
+			!self.errors && (self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : []);
 			self.errors.push(err);
 			callback.call(self, self.errors);
 			return;
@@ -1656,6 +1655,7 @@ Agent.destroy = function() {
 };
 
 Agent.prototype.readFile = function(id, options, callback) {
+
 	if (typeof(options) === 'function') {
 		callback = options;
 		options = null;
@@ -1791,7 +1791,12 @@ Agent.init = function(conn, debug) {
 		if (err)
 			throw err;
 
-
+		if (db.db) {
+			// new mongodb
+			if (conn[conn.length - 1] === '/')
+				conn = conn.substring(0, conn.length - 1);
+			db = db.db(conn.substring(conn.lastIndexOf('/') + 1));
+		}
 
 		CONNECTIONS[conn] = db;
 		F.wait('database');
