@@ -38,6 +38,10 @@ SqlBuilder.prototype = {
 	}
 };
 
+SqlBuilder.prototype.callback = function(fn) {
+	this.$callback = fn;
+};
+
 SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
@@ -1267,7 +1271,7 @@ Agent.prototype.listing = function(name, table, column) {
 
 	var key ='$listing_' + name;
 	var condition = new SqlBuilder(0, 0, self);
-	self.command.push({ type: 'query', query: 'SELECT COUNT(' + (column || '*') + ') as sqlagentcolumn FROM ' + table, name: key + '_count', condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true });
+	self.command.push({ type: 'query', query: 'SELECT COUNT(' + (column || '*') + ') as sqlagentcolumn FROM ' + table, name: key + '_count', condition: condition, first: true, column: 'sqlagentcolumn', datatype: 1, scalar: true, nocallback: true });
 	self.command.push({ type: 'select', name: key + '_items', table: table, condition: condition, listing: key, target: name });
 	self.builders[name] = condition;
 	return condition;
@@ -1688,6 +1692,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 	var obj;
 
 	if (err) {
+		item.condition && item.condition.$callback && item.condition.$callback(err);
 		self.errors.push(item.name + ': ' + err.message);
 		if (self.isTransaction)
 			self.isRollback = true;
@@ -1707,10 +1712,15 @@ Agent.prototype.$bind = function(item, err, rows) {
 			obj = {};
 			obj.count = self.results[item.listing + '_count'];
 			obj.items = self.results[item.listing + '_items'];
+			obj.page = 1;
+			obj.pages = 0;
+			obj.limit = item.condition._take;
 			self.results[item.target] = obj;
 			self.results[item.listing + '_count'] = null;
 			self.results[item.listing + '_items'] = null;
-		}
+			item.condition && item.condition.$callback && item.condition.$callback(null, obj);
+		} else
+			item.condition && !item.nocallback && item.condition.$callback && item.condition.$callback(null, self.results[item.name]);
 
 		self.$events.data && self.emit('data', item.target || item.name, self.results);
 		self.last = item.name;
@@ -1736,9 +1746,13 @@ Agent.prototype.$bind = function(item, err, rows) {
 		obj = {};
 		obj.count = self.results[item.listing + '_count'];
 		obj.items = self.results[item.listing + '_items'];
+		obj.page = ((item.condition._skip || 0) / (item.condition._take || 0)) + 1;
+		obj.limit = item.condition._take || 0;
+		obj.pages = Math.ceil(obj.count / obj.limit);
 		self.results[item.target] = obj;
 		self.results[item.listing + '_count'] = null;
 		self.results[item.listing + '_items'] = null;
+		item.condition && item.condition.$callback && item.condition.$callback(null, obj);
 	} else if (item.type === 'compare') {
 
 		var keys = item.keys;
@@ -1760,6 +1774,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 		self.results[item.name] = diff.length ? { diff: diff, record: val, value: item.value } : false;
 	}
 
+	!item.listing && item.condition && !item.nocallback && item.condition.$callback && item.condition.$callback(null, self.results[item.name]);
 	self.$events.data && self.emit('data', item.target || item.name, self.results);
 	self.last = item.name;
 	self.$bindwhen(item.name);

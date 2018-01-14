@@ -35,6 +35,10 @@ SqlBuilder.prototype = {
 	}
 };
 
+SqlBuilder.prototype.callback = function(fn) {
+	this.$callback = fn;
+};
+
 SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
@@ -999,7 +1003,9 @@ Agent.prototype.insert = function(name, table) {
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
-			callback(new Error('No data for inserting.'), null);
+			var err = new Error('No data for inserting.');
+			builder.$callback && builder.$callback(err);
+			callback(err, null);
 			return;
 		}
 
@@ -1024,7 +1030,9 @@ Agent.prototype.insert = function(name, table) {
 			self.id = id;
 			if (!self.isPut)
 				self.$id = self.id;
-			callback(err, id ? { identity: id } : null);
+			var data = id ? { identity: id } : null;
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
 		});
 	};
 
@@ -1063,11 +1071,14 @@ Agent.prototype.listing = function(name, table) {
 			builder._order && cursor.sort(builder._order);
 			builder._take && cursor.limit(builder._take);
 			builder._skip && cursor.skip(builder._skip);
-
 			cursor.toArray(function(err, docs) {
 				if (err)
 					return callback(err);
 				output.items = docs;
+				output.page = ((builder._skip || 0) / (builder._take || 0)) + 1;
+				output.limit = builder._take || 0;
+				output.pages = Math.ceil(output.count / output.limit);
+				builder && builder.$callback && builder.$callback(null, output);
 				callback(null, output);
 			});
 		});
@@ -1090,22 +1101,26 @@ Agent.prototype.select = function(name, table) {
 
 	var fn = function(db, builder, helper, callback) {
 
-		builder.prepare();
+		var cb = function(err, data) {
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
+		};
 
+		builder.prepare();
 		self.$events.query && self.emit('query', name, builder.debug('select'));
 
 		if (builder._isfirst && !builder._order) {
 			if (builder._fields)
-				db.findOne(builder.builder, builder._fields, callback);
+				db.findOne(builder.builder, builder._fields, cb);
 			else
-				db.findOne(builder.builder, callback);
+				db.findOne(builder.builder, cb);
 		} else {
 			var cursor = db.find(builder.builder);
 			builder._fields && cursor.project(builder._fields);
 			builder._order && cursor.sort(builder._order);
 			builder._take && cursor.limit(builder._take);
 			builder._skip && cursor.skip(builder._skip);
-			cursor.toArray(callback);
+			cursor.toArray(cb);
 		}
 	};
 
@@ -1183,7 +1198,8 @@ Agent.prototype.exists = function(name, table) {
 		builder.prepare();
 		self.$events.query && self.emit('query', name, builder.debug('exists'));
 		db.findOne(builder.builder, function(err, doc) {
-			callback(err, doc ? true : false);
+			builder.$callback && builder.$callback(err, !!doc);
+			callback(err, !!doc);
 		});
 	};
 
@@ -1206,7 +1222,10 @@ Agent.prototype.count = function(name, table, column) {
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
 		self.$events.query && self.emit('query', name, builder.debug('count'));
-		db.find(builder.builder).count(callback);
+		db.find(builder.builder).count(function(err, count) {
+			builder.$callback && builder.$callback(err, count);
+			callback(err, count);
+		});
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
@@ -1233,7 +1252,9 @@ Agent.prototype.max = function(name, table, column) {
 		cursor.project(builder._fields);
 		cursor.limit(1);
 		cursor.toArray(function(err, response) {
-			callback(err, response && response.length ? response[0][helper] : 0);
+			var data = response && response.length ? response[0][helper] : 0;
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
 		});
 	};
 
@@ -1265,7 +1286,9 @@ Agent.prototype.min = function(name, table, column) {
 		cursor.project(builder._fields);
 		cursor.limit(1);
 		cursor.toArray(function(err, response) {
-			callback(err, response && response.length ? response[0][helper] : 0);
+			var data = response && response.length ? response[0][helper] : 0;
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
 		});
 	};
 
@@ -1301,7 +1324,9 @@ Agent.prototype.update = function(name, table) {
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
-			callback(new Error('No data for update.'), null);
+			var err = new Error('No data for update.');
+			builder.$callback && builder.$callback(err);
+			callback(err, null);
 			return;
 		}
 
@@ -1309,11 +1334,15 @@ Agent.prototype.update = function(name, table) {
 
 		if (builder._isfirst) {
 			db.updateOne(builder.builder, builder.data, function(err, response) {
-				callback(err, response ? (response.result.nModified || response.result.n) : 0);
+				var data = response ? (response.result.nModified || response.result.n) : 0;
+				builder.$callback && builder.$callback(err, data);
+				callback(err, data);
 			});
 		} else {
 			db.update(builder.builder, builder.data, { multi: true }, function(err, response) {
-				callback(err, response ? (response.result.nModified || response.result.n) : 0);
+				var data = response ? (response.result.nModified || response.result.n) : 0;
+				builder.$callback && builder.$callback(err, data);
+				callback(err, data);
 			});
 		}
 	};
@@ -1338,11 +1367,15 @@ Agent.prototype.delete = function(name, table) {
 		self.$events.query && self.emit('query', name, builder.debug('delete'));
 		if (builder._isfirst) {
 			db.remove(builder.builder, { single: true }, function(err, response) {
-				callback(err, response ? (response.result.nRemoved || response.result.n) : 0);
+				var data = response ? (response.result.nRemoved || response.result.n) : 0;
+				builder.$callback && builder.$callback(data);
+				callback(err, data);
 			});
 		} else {
 			db.remove(builder.builder, function(err, response) {
-				callback(err, response ? (response.result.nRemoved || response.result.n) : 0);
+				var data = response ? (response.result.nRemoved || response.result.n) : 0;
+				builder.$callback && builder.$callback(data);
+				callback(err, data);
 			});
 		}
 	};
