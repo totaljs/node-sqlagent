@@ -32,10 +32,22 @@ __IMPORTANT__:
 #### PostgreSQL
 
 ```javascript
-// Example: postgre://user:password@127.0.0.1/database
+// Example: postgresql://user:password@127.0.0.1/database
 var Agent = require('sqlagent/pg').connect('connetion-string-to-postgresql');
 var sql = new Agent();
 ```
+
+__Additional configuration__:
+
+```
+postgresql://user:password@127.0.0.1/database?native=true&ssl=true
+```
+
+- `native` {Boolean} enables PG C native binding (faster than JavaScript binding, default: `false`)
+- `ssl` {Boolean} enables SSL (default: `false`)
+- `max` {Number} max. pools (default: `20`)
+- `min` {Number} min. pools (default: `4`)
+- `idleTimeoutMillis` {Number} idle timeout (default: `1000`)
 
 #### MySQL
 
@@ -197,6 +209,9 @@ sql.exec(function(err, response) {
     // users will contain:
     // .count --> count of all users according to the filter
     // .items --> selected items
+    // .page  --> a page number (+v11.0.0)
+    // .pages --> page count (+v11.0.0)
+    // .limit --> items limit per page (+v11.0.0)
 
     console.log(response.users.count);
     console.log(response.users.items);
@@ -945,6 +960,19 @@ sql.exec(function(err, response) {
     console.log(response.users);
 })
 ```
+
+---
+
+#### builder.callback(fn)
+
+```plain
+builder.callback(function(err, response) {
+
+});
+```
+
+`+v11.0.0` returns a value from DB
+
 
 ---
 
