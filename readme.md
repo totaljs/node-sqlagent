@@ -1411,14 +1411,9 @@ sql.readStream(loid, function(err, stream, size) {
 - all file operations are executed immediately, there's no need to call sql.exec()
 
 ```javascript
-// nosql.writeFile(id, filename, name, [metadata], [options], callback)
-nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
-    // Now is the file inserted
-});
-
-// nosql.writeBuffer(id, buffer, filename, [metadata], [options], callback)
-nosql.writeBuffer(new ObjectID(), Buffer.from('Peter Širka', 'utf8'), 'petersirka.txt', function(err) {
-    // Now is the buffer inserted
+// nosql.writeStream(id, stream, filename, [metadata], [options], callback)
+nosql.writeStream(new ObjectID(), Fs.createReadStream('logo.png'), 'logo.png', function(err) {
+    // Now is the stream inserted
 });
 
 // nosql.readFile(id, [options], callback(err, gs, close, metadata, size, filename))

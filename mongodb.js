@@ -1700,15 +1700,19 @@ Agent.prototype.readFile = function(id, options, callback) {
 			return callback(err);
 
 		var bucket = new database.GridFSBucket(db, options);
-		FILEREADERFILTER._id = id;
 
-		bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
-			if (!err && !doc)
-				err = new Error('File not found.');
-			if (err)
-				return callback(err, null, NOOP);
-			callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket), NOOP, doc.metadata, doc.length, doc.filename);
-		});
+		if (bucket.openUploadStream) {
+			console.error('SQLAgent error: readFile() is not supported for MongoDB, use readStream().');
+		} else {
+			FILEREADERFILTER._id = id;
+			bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
+				if (!err && !doc)
+					err = new Error('File not found.');
+				if (err)
+					return callback(err, null, NOOP);
+				callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket), NOOP, doc.metadata, doc.length, doc.filename);
+			});
+		}
 	});
 };
 
@@ -1725,15 +1729,28 @@ Agent.prototype.readStream = function(id, options, callback) {
 			return callback(err);
 
 		var bucket = new database.GridFSBucket(db, options);
-		FILEREADERFILTER._id = id;
 
-		bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
-			if (!err && !doc)
-				err = new Error('File not found.');
-			if (err)
-				return callback(err);
-			callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket).stream(true), doc.metadata, doc.length, doc.filename);
-		});
+		if (bucket.openUploadStream) {
+			FILEREADERFILTER._id = id;
+			db.collection('fs.files').findOne(FILEREADERFILTER, function(err, doc) {
+				if (!err && !doc)
+					err = new Error('File not found.');
+				if (err)
+					return callback(err, null, NOOP);
+
+				callback(null, bucket.openDownloadStream(id), doc.metadata, doc.length, doc.filename);
+			});
+		} else {
+			FILEREADERFILTER._id = id;
+
+			bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
+				if (!err && !doc)
+					err = new Error('File not found.');
+				if (err)
+					return callback(err);
+				callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket).stream(true), doc.metadata, doc.length, doc.filename);
+			});
+		}
 	});
 
 	return this;
@@ -1772,6 +1789,46 @@ Agent.prototype.writeFile = function(id, file, name, meta, options, callback) {
 			callback && callback(err);
 			callback = null;
 		});
+	});
+
+	return self;
+};
+
+Agent.prototype.writeStream = function(id, stream, name, meta, options, callback) {
+	var self = this;
+
+	if (!callback)
+		callback = NOOP;
+
+	if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+
+	if (typeof(meta) === 'function') {
+		var tmp = callback;
+		callback = meta;
+		meta = tmp;
+	}
+
+	connect(self.connection, function(err, db) {
+
+		if (err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			return;
+		}
+
+		var bucket = new database.GridFSBucket(db, options);
+		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
+
+		upload.once('finish', function(err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			callback = null;
+		});
+
+		stream.pipe(upload);
 	});
 
 	return self;
