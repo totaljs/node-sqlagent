@@ -44,7 +44,7 @@ LargeObject.prototype.write = function(buffer, callback) {
 
 LargeObject.prototype.seek = function(position, ref, callback) {
 	var self = this;
-	self._client.query({ name: 'npg_lo_lseek64', text: 'SELECT lo_lseek64($1, $2, $3) as location', values: [self._fd, position, ref] }, function(err, response) {
+	self._client.query({ name: 'npg_lo_lseek64', text: 'SELECT lo_lseek' + self.plusql + '($1, $2, $3) as location', values: [self._fd, position, ref] }, function(err, response) {
 		if (err)
 			return callback(err);
 		var location = response.rows[0].location;
@@ -55,7 +55,7 @@ LargeObject.prototype.seek = function(position, ref, callback) {
 
 LargeObject.prototype.tell = function(callback) {
 	var self = this;
-	self._client.query({ name: 'npg_lo_tell64', text: 'SELECT lo_tell64($1) as location', values: [self._fd] }, function(err, response) {
+	self._client.query({ name: 'npg_lo_tell64', text: 'SELECT lo_tell' + self.plusql + '($1) as location', values: [self._fd] }, function(err, response) {
 		if (err)
 			return callback(err);
 		var location = response.rows[0].location;
@@ -66,7 +66,7 @@ LargeObject.prototype.tell = function(callback) {
 
 LargeObject.prototype.size = function(callback) {
 	var self = this;
-	self._client.query({ name: 'npg_size', text: 'SELECT lo_lseek64($1, location, 0), seek.size FROM (SELECT lo_lseek64($1, 0, 2) AS SIZE, tell.location FROM (SELECT lo_tell64($1) AS location) tell) seek', values: [self._fd] }, function(err, response) {
+	self._client.query({ name: 'npg_size', text: 'SELECT lo_lseek' + self.plusql + '($1, location, 0), seek.size FROM (SELECT lo_lseek' + self.plusql + '($1, 0, 2) AS SIZE, tell.location FROM (SELECT lo_tell' + self.plusql + '($1) AS location) tell) seek', values: [self._fd] }, function(err, response) {
 		if (err)
 			return callback(err);
 		var size = response.rows[0].size;
@@ -77,7 +77,7 @@ LargeObject.prototype.size = function(callback) {
 
 LargeObject.prototype.truncate = function(length, callback) {
 	var self = this;
-	self._client.query({ name: 'npg_lo_truncate64', text:'SELECT lo_truncate64($1, $2)', values: [self._fd, length]}, callback);
+	self._client.query({ name: 'npg_lo_truncate' + self.plusql, text:'SELECT lo_truncate' + self.plusql + '($1, $2)', values: [self._fd, length]}, callback);
 	return self;
 };
 
@@ -103,10 +103,12 @@ LargeObjectManager.prototype.open = function(oid, mode, callback) {
 		throw 'Illegal Argument';
 
 	var self = this;
-	self._client.query({ name: 'npg_lo_open', text:'SELECT lo_open($1, $2) AS fd', values: [oid, mode]}, function(err, response) {
+	self._client.query({ name: 'npg_lo_open', text:'SELECT lo_open($1, $2) AS fd, current_setting(\'server_version_num\') as version', values: [oid, mode]}, function(err, response) {
 		if (err)
 			return callback(err);
 		var lo = new LargeObject(self._client, oid, response.rows[0].fd);
+		lo.oldversion = response.rows[0].version < 90300;
+		lo.plusql = lo.oldversion ? '' : '64';
 		callback(null, lo);
 	});
 
