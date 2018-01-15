@@ -1416,13 +1416,6 @@ nosql.writeStream(new ObjectID(), Fs.createReadStream('logo.png'), 'logo.png', f
     // Now is the stream inserted
 });
 
-// nosql.readFile(id, [options], callback(err, gs, close, metadata, size, filename))
-nosql.readFile(some_object_id, function(err, gs, close, metadata, size, filename) {
-    // gs = GridStore
-    // gs.stream(true);
-    close();
-});
-
 // nosql.readStream(id, [options], callback(err, stream, metadata, size, filename))
 nosql.readStream(id, function(err, stream, metadata, size, filename) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
