@@ -1822,7 +1822,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	} else
 		self.options = pools_cache[self.$conn];
 
-	self.db = new database.Connection(self.options, function(err) {
+	self.db = new database.connect(self.options, function(err) {
 		if (err) {
 			if (!self.errors)
 				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
