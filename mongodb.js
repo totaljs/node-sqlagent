@@ -1649,7 +1649,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		if (err) {
 			!self.errors && (self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : []);
 			self.errors.push(err);
-			callback.call(self, self.errors);
+			callback.call(self, self.errors, {});
 			return;
 		}
 
