@@ -1934,14 +1934,16 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 
 			Lo.create(client).readStream(oid, buffersize || 16384, function(err, size, stream) {
 
+				var cb = () => client.query('COMMIT', done);
+
 				if (err) {
-					done();
+					cb();
 					self.errors && self.errors.push(err);
 					return callback(err);
 				}
 
-				stream.on('error', () => client.query('COMMIT', done));
-				stream.on('end', () => client.query('COMMIT', done));
+				stream.on('error', cb);
+				stream.on('end', cb);
 				callback(null, stream, parseInt(size));
 			});
 		});
