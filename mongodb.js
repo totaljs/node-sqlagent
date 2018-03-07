@@ -1151,7 +1151,7 @@ Agent.prototype.compare = function(name, table, obj, keys) {
 		builder.prepare();
 		self.$events.query && self.emit('query', name, builder.debug('compare'));
 
-		db.findOne(builder.builder, builder._fields, function(err, doc) {
+		db.findOne(builder.builder, builder._fields ? { projection: builder._fields } : null, function(err, doc) {
 
 			if (err)
 				return callback(err);
@@ -1183,6 +1183,8 @@ Agent.prototype.find = Agent.prototype.builder = function(name) {
 	return this.builders[name];
 };
 
+const EMPTYEXISTS = { projection: { _id: 1 }};
+
 Agent.prototype.exists = function(name, table) {
 	var self = this;
 
@@ -1197,7 +1199,7 @@ Agent.prototype.exists = function(name, table) {
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
 		self.$events.query && self.emit('query', name, builder.debug('exists'));
-		db.findOne(builder.builder, function(err, doc) {
+		db.findOne(builder.builder, EMPTYEXISTS, function(err, doc) {
 			builder.$callback && builder.$callback(err, !!doc);
 			callback(err, !!doc);
 		});
