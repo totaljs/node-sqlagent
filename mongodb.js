@@ -1111,7 +1111,7 @@ Agent.prototype.select = function(name, table) {
 
 		if (builder._isfirst && !builder._order) {
 			if (builder._fields)
-				db.findOne(builder.builder, builder._fields, cb);
+				db.findOne(builder.builder, { projection: builder._fields }, cb);
 			else
 				db.findOne(builder.builder, cb);
 		} else {
