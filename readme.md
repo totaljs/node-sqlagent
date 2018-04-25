@@ -34,7 +34,9 @@ __IMPORTANT__:
 ```javascript
 // Example: postgresql://user:password@127.0.0.1/database
 var Agent = require('sqlagent/pg').connect('connetion-string-to-postgresql');
-var sql = new Agent();
+
+// Agent() returns new instance of SQL Agent
+var sql = Agent();
 ```
 
 __Additional configuration__:
