@@ -75,7 +75,7 @@ var Agent = require('sqlagent/mongodb').connect('connetion-string-to-mongodb');
 var nosql = new Agent();
 ```
 
-### Initialization for total.js
+### Initialization for Total.js
 
 Create a definition file:
 
@@ -1446,6 +1446,26 @@ __Global events__:
 ON('database', function() {
     // Database is ready
 });
+```
+
+## Async/Await
+
+`+v12.0.0` supports `sql.promise([name], [callback(response)])` for using of async/await.
+
+- `sql.promise()` performs `sql.exec()`
+- look to example below:
+
+```javascript
+var Agent = require('sqlagent/pg').connect('...');
+
+async function data() {
+    var b = new Agent();
+    b.select('users', 'tbl_users');
+    var users = await b.promise('users');
+    console.log(users);
+}
+
+data();
 ```
 
 ## Contributors
