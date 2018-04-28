@@ -1589,7 +1589,7 @@ Agent.prototype._prepare = function(callback) {
 			item.$params && prepare_params_request(request, item.$params);
 
 			request.query(item.$query, function(err, rows) {
-				self.$bind(item, err, rows.recordset);
+				self.$bind(item, err, rows ? rows.recordset : EMPTYARRAY);
 				next();
 			});
 			return;
@@ -1822,7 +1822,8 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	} else
 		self.options = pools_cache[self.$conn];
 
-	self.db = new database.connect(self.options, function(err) {
+	//self.db = new database.connect(self.options, function(err) {
+	self.db = new database.ConnectionPool(self.options, function(err) {
 		if (err) {
 			if (!self.errors)
 				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
@@ -1842,11 +1843,34 @@ Agent.destroy = function() {
 		pools_cache[keys[i]].end(function(){});
 };
 
+Agent.prototype.done = function() {
+	this.db && this.db.close();
+	return this;
+};
+
 Agent.prototype.$$exec = function(returnIndex) {
 	var self = this;
 	return function(callback) {
 		return self.exec(callback, returnIndex);
 	};
+};
+
+Agent.prototype.promise = function(index, fn) {
+	var self = this;
+
+	if (typeof(index) === 'function') {
+		fn = index;
+		index = undefined;
+	}
+
+	return new Promise(function(resolve, reject) {
+		self.exec(function(err, result) {
+			if (err)
+				reject(err);
+			else
+				resolve(fn ? fn(result) : result);
+		}, index);
+	});
 };
 
 function dateToString(dt) {
