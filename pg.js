@@ -589,7 +589,7 @@ SqlBuilder.prototype.query = SqlBuilder.prototype.sql = function(sql) {
 	return self;
 };
 
-SqlBuilder.prototype.toString = function(id, isCounter) {
+SqlBuilder.prototype.toString = function(id, isScalar) {
 
 	var self = this;
 	var plus = '';
@@ -599,7 +599,7 @@ SqlBuilder.prototype.toString = function(id, isCounter) {
 	if (self._join)
 		join = self._join.join(' ');
 
-	if (!isCounter) {
+	if (!isScalar) {
 		if (self._order)
 			order = ' ORDER BY ' + self._order.join(',');
 		if (self._skip && self._take)
@@ -668,6 +668,24 @@ Agent.connect = function(conn, callback) {
 	return function(error) {
 		return new Agent(conn, error);
 	};
+};
+
+Agent.prototype.promise = function(index, fn) {
+	var self = this;
+
+	if (typeof(index) === 'function') {
+		fn = index;
+		index = undefined;
+	}
+
+	return new Promise(function(resolve, reject) {
+		self.exec(function(err, result) {
+			if (err)
+				reject(err);
+			else
+				resolve(fn ? fn(result) : result);
+		}, index);
+	});
 };
 
 Agent.prototype.emit = function(name, a, b, c, d, e, f, g) {

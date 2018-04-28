@@ -660,6 +660,24 @@ Agent.connect = function(conn, callback) {
 	};
 };
 
+Agent.prototype.promise = function(index, fn) {
+	var self = this;
+
+	if (typeof(index) === 'function') {
+		fn = index;
+		index = undefined;
+	}
+
+	return new Promise(function(resolve, reject) {
+		self.exec(function(err, result) {
+			if (err)
+				reject(err);
+			else
+				resolve(fn ? fn(result) : result);
+		}, index);
+	});
+};
+
 Agent.prototype.emit = function(name, a, b, c, d, e, f, g) {
 	var evt = this.$events[name];
 	if (evt) {
