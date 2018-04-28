@@ -376,6 +376,15 @@ SqlBuilder.column = function(name, schema) {
 		name = name.replace(REG_COLUMN, '');
 	}
 
+	var indexAS = name.toLowerCase().indexOf(' as');
+	var plus = '';
+
+	if (indexAS !== -1) {
+		plus = name.substring(indexAS);
+		name = name.substring(0, indexAS);
+	} else if (cast)
+		plus = ' as `' + name + '`';
+
 	var index = name.lastIndexOf('-->');
 	var cast = '';
 	var casting = function(value) {
@@ -398,15 +407,6 @@ SqlBuilder.column = function(name, schema) {
 		}
 		cast = ' AS ' + cast;
 	}
-
-	var indexAS = name.toLowerCase().indexOf(' as');
-	var plus = '';
-
-	if (indexAS !== -1) {
-		plus = name.substring(indexAS);
-		name = name.substring(0, indexAS);
-	} else if (cast)
-		plus = ' as `' + name + '`';
 
 	if (raw)
 		return columns_cache[cachekey] = casting(name) + plus;
@@ -1629,7 +1629,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 	} else if (item.first && item.column) {
 		var tmp = rows instanceof Array ? rows.length ? rows[0] : null : rows;
 		if (tmp)
-			self.results[item.name] = item.column === 'sqlagentcolumn_e' ? true : item.datatype === 1 ? parseFloat(tmp[item.column] || 0) : tmp[item.column];
+			self.results[item.name] = item.column === 'sqlagentcolumn_e' ? true : item.datatype === 1 ? item.condition && item.condition._group ? rows.length : parseFloat(tmp[item.column] || 0) : tmp[item.column];
 	} else if (item.first)
 		self.results[item.name] = rows instanceof Array ? rows[0] : rows;
 	else

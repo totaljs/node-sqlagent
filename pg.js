@@ -417,6 +417,15 @@ SqlBuilder.column = function(name, schema) {
 		name = name.replace(REG_COLUMN, '');
 	}
 
+	var indexAS = name.toLowerCase().indexOf(' as');
+	var plus = '';
+
+	if (indexAS !== -1) {
+		plus = name.substring(indexAS);
+		name = name.substring(0, indexAS);
+	} else if (cast)
+		plus = ' as "' + name + '"';
+
 	var index = name.lastIndexOf('-->');
 	var cast = '';
 
@@ -429,30 +438,21 @@ SqlBuilder.column = function(name, schema) {
 			case 'byte':
 			case 'smallint':
 			case 'number':
-				cast = '::int ';
+				cast = '::int';
 				break;
 			case 'float':
 			case 'real':
 			case 'double':
 			case 'decimal':
 			case 'currency':
-				cast = '::real ';
+				cast = '::real';
 				break;
 			case 'boolean':
 			case 'bool':
-				cast = '::boolean ';
+				cast = '::boolean';
 				break;
 		}
 	}
-
-	var indexAS = name.toLowerCase().indexOf(' as');
-	var plus = '';
-
-	if (indexAS !== -1) {
-		plus = name.substring(indexAS);
-		name = name.substring(0, indexAS);
-	} else if (cast)
-		plus = ' as "' + name + '"';
 
 	if (raw)
 		return columns_cache[cachekey] = name + cast + plus;
@@ -1748,7 +1748,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 
 	if (item.first && item.column) {
 		if (rows.length)
-			self.results[item.name] = item.column === 'sqlagentcolumn_e' ? true : item.datatype === 1 ? parseFloat(rows[0][item.column] || 0) : rows[0][item.column];
+			self.results[item.name] = item.column === 'sqlagentcolumn_e' ? true : item.datatype === 1 ? item.condition && item.condition._group ? rows.length : parseFloat(rows[0][item.column] || 0) : rows[0][item.column];
 	} else if (item.first)
 		self.results[item.name] = rows instanceof Array ? rows[0] : rows;
 	else
