@@ -410,6 +410,14 @@ SqlBuilder.escaper = function(value) {
 	return "'" + value.replace(REG_APO, '\'\'') + "'";
 };
 
+SqlBuilder.prototype.raw = function(name, value) {
+	var self = this;
+	if (!self._set)
+		self._set = {};
+	self._set['!' + name] = value;
+	return self;
+};
+
 SqlBuilder.column = function(name, schema) {
 
 	var cachekey = (schema ? schema + '.' : '') + name;
