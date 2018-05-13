@@ -6,6 +6,7 @@ const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 const FILEREADERFILTER = {};
 const REG_APO = /'/;
+const OPTIONS = { reconnectTries: 120, reconnectInterval: 1000 };
 
 require('./index');
 
@@ -638,7 +639,7 @@ Agent.embedded = function() {
 Agent.debug = false;
 
 Agent.connect = function(conn, callback) {
-	database.connect(conn, function(err, db) {
+	database.connect(conn, OPTIONS, function(err, db) {
 		if (err) {
 			if (callback)
 				return callback(err);
@@ -1897,7 +1898,7 @@ Agent.init = function(conn, debug) {
 
 	F.wait('database');
 
-	database.connect(conn, function(err, db) {
+	database.connect(conn, OPTIONS, function(err, db) {
 		if (err)
 			throw err;
 
