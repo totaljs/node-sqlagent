@@ -26,7 +26,7 @@ function connectionstring(conn) {
 		return CACHE[conn];
 
 	var params = Url.parse(conn);
-	var auth = params.auth.split(':');
+	var auth = (params.auth || ':').split(':');
 	var q = Qs.parse(params.query);
 
 	return CACHE[conn] = {
