@@ -435,10 +435,14 @@ SqlBuilder.column = function(name, schema) {
 		switch (cast) {
 			case 'integer':
 			case 'int':
-			case 'byte':
 			case 'smallint':
 			case 'number':
 				cast = '::int';
+				break;
+			case 'byte':
+			case 'binary':
+			case 'bytea':
+				cast = '::bytea';
 				break;
 			case 'float':
 			case 'real':
@@ -450,6 +454,13 @@ SqlBuilder.column = function(name, schema) {
 			case 'boolean':
 			case 'bool':
 				cast = '::boolean';
+				break;
+			case 'text':
+			case 'varchar':
+			case 'character':
+			case 'char':
+			case 'string':
+				cast = '::text';
 				break;
 		}
 	}
