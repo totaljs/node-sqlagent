@@ -63,6 +63,7 @@ var sql = new Agent();
 
 ```javascript
 // Example: mssql://user:password@127.0.0.1/database
+// Example with name of instance: mssql://user:password@localhost_SQLEXPRESS/database
 var Agent = require('sqlagent/sqlserver').connect('connetion-string-to-mssql');
 var sql = new Agent();
 ```
@@ -1475,6 +1476,7 @@ data();
 | [Peter Širka](https://github.com/JozefGula) | author + support | <petersirka@gmail.com> |
 | [Martin Smola](https://github.com/molda) | contributor + support | <smola.martin@gmail.com> |
 | [Jay Kelkar](https://github.com/jkelkar) | contributor | <jkelkar@gmail.com> |
+| [Aidan Dunn](https://github.com/Aidan-Chey) | contributor | <aidancheyd@gmail.com> |
 
 ## Contact
 

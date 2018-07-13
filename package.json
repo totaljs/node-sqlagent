@@ -14,6 +14,9 @@
     }, {
         "name": "Martin Smola",
         "email": "smola.martin@gmail.com"
+    }, {
+        "name": "Aidan Dunn",
+        "email": "aidancheyd@gmail.com"
     }],
 
     "license": "MIT",
@@ -22,5 +25,5 @@
         "type": "git",
         "url": "https://github.com/totaljs/node-sqlagent.git"
     },
-    "version": "12.0.1"
+    "version": "12.0.2"
 }
