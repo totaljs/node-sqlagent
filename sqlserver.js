@@ -40,6 +40,7 @@ SqlBuilder.prototype = {
 
 SqlBuilder.prototype.callback = function(fn) {
 	this.$callback = fn;
+	return this;
 };
 
 SqlBuilder.prototype.replace = function(builder, reference) {
