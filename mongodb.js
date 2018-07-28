@@ -41,6 +41,10 @@ SqlBuilder.prototype.callback = function(fn) {
 	return this;
 };
 
+SqlBuilder.prototype.assign = function() {
+	throw new Error('This method is not supported in MongoDB.');
+};
+
 SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
@@ -1671,7 +1675,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 		if (err) {
 			!self.errors && (self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : []);
 			self.errors.push(err);
-			callback.call(self, self.errors, {});
+			callback && callback.call(self, self.errors, {});
 			return;
 		}
 

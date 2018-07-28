@@ -80,6 +80,12 @@ SqlBuilder.prototype.callback = function(fn) {
 	return this;
 };
 
+SqlBuilder.prototype.assign = function(name, key) {
+	this.$assignname = name;
+	this.$assignkey = key;
+	return this;
+};
+
 SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
@@ -418,6 +424,13 @@ SqlBuilder.column = function(name, schema) {
 		name = name.replace(REG_COLUMN, '');
 	}
 
+	var index = name.lastIndexOf('-->');
+	var cast = '';
+	if (index !== -1) {
+		cast = name.substring(index).replace('-->', '').trim();
+		name = name.substring(0, index).trim();
+	}
+
 	var indexAS = name.toLowerCase().indexOf(' as');
 	var plus = '';
 
@@ -427,12 +440,7 @@ SqlBuilder.column = function(name, schema) {
 	} else if (cast)
 		plus = ' as "' + name + '"';
 
-	var index = name.lastIndexOf('-->');
-	var cast = '';
-
-	if (index !== -1) {
-		cast = name.substring(index).replace('-->', '').trim();
-		name = name.substring(0, index).trim();
+	if (cast) {
 		switch (cast) {
 			case 'integer':
 			case 'int':
@@ -1734,6 +1742,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 			self.results[item.target] = obj;
 			self.results[item.listing + '_count'] = null;
 			self.results[item.listing + '_items'] = null;
+			item.condition.$assignname && self.results[item.condition.$assignname] && (self.results[item.condition.$assignname][item.condition.$assignkey] = obj);
 			item.condition && item.condition.$callback && item.condition.$callback(null, obj);
 		} else
 			item.condition && !item.nocallback && item.condition.$callback && item.condition.$callback(null, self.results[item.name]);
@@ -1798,6 +1807,8 @@ Agent.prototype.$bind = function(item, err, rows) {
 	}
 
 	!item.listing && item.condition && !item.nocallback && item.condition.$callback && item.condition.$callback(null, self.results[item.name]);
+	item.condition.$assignname && self.results[item.condition.$assignname] && (self.results[item.condition.$assignname][item.condition.$assignkey] = self.results[item.name]);
+
 	self.$events.data && self.emit('data', item.target || item.name, self.results);
 	self.last = item.name;
 	self.$bindwhen(item.name);
@@ -1830,7 +1841,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 			if (!self.errors)
 				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
 			self.errors.push(err);
-			callback.call(self, self.errors, {});
+			callback && callback.call(self, self.errors, {});
 		} else {
 			self.done = done;
 			self.db = client;
