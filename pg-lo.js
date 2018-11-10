@@ -252,7 +252,6 @@ ReadStream.prototype._read = function(length) {
 	});
 };
 
-
 exports.create = function(client) {
 	return new LargeObjectManager(client);
 };
