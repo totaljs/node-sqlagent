@@ -1,8 +1,12 @@
-var database = require('mongodb');
-var Events = require('events');
-var columns_cache = {};
-var NOOP = function(){};
-var CONNECTIONS = {};
+const database = require('mongodb');
+const Fs = require('fs');
+const columns_cache = {};
+const CONNECTIONS = {};
+const NOOP = function(){};
+const PROJECTION = { _id: 1 };
+const FILEREADERFILTER = {};
+const REG_APO = /'/;
+const OPTIONS = { reconnectTries: 120, reconnectInterval: 1000 };
 
 require('./index');
 
@@ -16,10 +20,6 @@ function SqlBuilder(skip, take, agent) {
 	this._inc = null;
 	this._scope = 0;
 	this._fields;
-	this._schema;
-	this._group;
-	this._having;
-	this._primary;
 	this._is = false;
 	this._isfirst = false;
 	this._prepare;
@@ -36,34 +36,56 @@ SqlBuilder.prototype = {
 	}
 };
 
-SqlBuilder.prototype.replace = function(builder) {
+SqlBuilder.prototype.callback = function(fn) {
+	this.$callback = fn;
+	return this;
+};
+
+SqlBuilder.prototype.assign = function() {
+	throw new Error('This method is not supported in MongoDB.');
+};
+
+SqlBuilder.prototype.replace = function(builder, reference) {
 	var self = this;
 
-	self.builder = copy(builder.builder);
+	self.builder = reference ? builder.builder : copy(builder.builder);
 	self.scope = builder.scope;
 
 	if (builder._order)
-		self._order = copy(builder._order);
+		self._order = reference ? builder._order : copy(builder._order);
 
 	self._skip = builder._skip;
 	self._take = builder._take;
 
 	if (builder._set)
-		self._set = copy(builder._set);
+		self._set = reference ? builder._set : copy(builder._set);
 
 	if (builder._inc)
-		self._inc = copy(builder._inc);
+		self._inc = reference ? builder._inc : copy(builder._inc);
 
 	if (builder._prepare)
-		self._prepare = copy(builder._prepare);
+		self._prepare = reference ? builder._prepare : copy(builder._prepare);
 
 	if (builder._fields)
-		self._fields = copy(builder._fields);
+		self._fields = reference ? builder._fields : copy(builder._fields);
 
 	self._is = builder._is;
 	self._isfirst = builder._isfirst;
 
 	return self;
+};
+
+SqlBuilder.prototype.debug = function(type) {
+	var obj = {};
+	obj.type = type;
+	obj.condition = this.builder;
+	this._fields && (obj.project = this._fields);
+	this._order && (obj.sort = this._order);
+	this._set && (obj.set = this._set);
+	this._inc && (obj.inc = this._inc);
+	obj.take = this._take;
+	obj.skip = this._skip;
+	return obj;
 };
 
 function copy(source) {
@@ -78,14 +100,14 @@ function copy(source) {
 	}
 
 	return target;
-};
+}
 
 SqlBuilder.prototype.clone = function() {
 	var builder = new SqlBuilder(0, 0, this.agent);
 	return builder.replace(this);
 };
 
-SqlBuilder.prototype.join = function(name, on, type) {
+SqlBuilder.prototype.join = function(name) {
 	throw new Error('SqlBuilder.join(' + name + ') is not supported.');
 };
 
@@ -100,14 +122,10 @@ SqlBuilder.prototype.set = function(name, value) {
 	}
 
 	var keys = Object.keys(name);
-
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-
-		if (key === '_id' || key[0] === '$')
-			continue;
-
-		self._set[key] = name[key];
+		if (key !== '_id' && key[0] !== '$' && name[key] !== undefined)
+			self._set[key] = name[key];
 	}
 
 	return self;
@@ -143,7 +161,7 @@ SqlBuilder.prototype.fields = function() {
 	}
 
 	for (var i = 0; i < arguments.length; i++)
-			self.field(arguments[i]);
+		self.field(arguments[i]);
 	return self;
 };
 
@@ -196,11 +214,12 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 					value = value.parseFloat();
 					break;
 			}
- 		} else {
- 			type = '+';
- 			if (!value)
- 				value = 1;
- 		}
+		} else {
+			if(type !== '-')
+				type = '+';
+			if (value == null)
+				value = 1;
+		}
 
 		if (!value)
 			return self;
@@ -219,7 +238,7 @@ SqlBuilder.prototype.inc = function(name, type, value) {
 
 	for (var i = 0, length = keys.length; i < length; i++) {
 		var key = keys[i];
-		self.inc(key, name[key]);
+		name[key] && self.inc(key, name[key]);
 	}
 
 	return self;
@@ -247,13 +266,18 @@ SqlBuilder.prototype.order = function(name, desc) {
 
 	if (index !== -1 || lowered.lastIndexOf('asc') !== -1) {
 		name = name.split(' ')[0];
-		desc = indexOf !== -1;
+		desc = index !== -1;
 	}
 
 	columns_cache[key] = {};
 	columns_cache[key].name = name;
 	columns_cache[key].value = self._order[name] = desc ? -1 : 1;
 	return self;
+};
+
+SqlBuilder.prototype.random = function() {
+	console.log('SqlBuilder.random() is not supported.');
+	return this;
 };
 
 SqlBuilder.prototype.skip = function(value) {
@@ -315,7 +339,6 @@ SqlBuilder.prototype.push = function(name, operator, value) {
 	} else if (operator === '!=')
 		operator = '<>';
 
-	var is = false;
 	var type = typeof(value);
 
 	if (name[0] === '!' && type !== 'function') {
@@ -370,17 +393,17 @@ SqlBuilder.escape = SqlBuilder.prototype.escape = function(value) {
 	return value;
 };
 
-SqlBuilder.column = function(name, schema) {
+SqlBuilder.column = function(name) {
 	console.log('SqlBuilder.column() is not supported.');
 	return name;
 };
 
-SqlBuilder.prototype.group = function(names) {
+SqlBuilder.prototype.group = function() {
 	console.log('SqlBuilder.group() is not supported.');
 	return this;
 };
 
-SqlBuilder.prototype.having = function(condition) {
+SqlBuilder.prototype.having = function() {
 	console.log('SqlBuilder.having() is not supported.');
 	return this;
 };
@@ -481,7 +504,6 @@ SqlBuilder.prototype.like = function(name, value, where) {
 
 SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	var self = this;
-	var obj = {};
 	var typeA = typeof(valueA);
 	var typeB = typeof(valueB);
 	self.$scope(name, { $gte: valueA, $lte: valueB }, typeA === 'function' || typeB === 'function' ? 'function' : typeA, 3);
@@ -489,12 +511,11 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	return self;
 };
 
-SqlBuilder.prototype.query = function(obj) {
-	console.log('SqlBuilder.query() is not supported.');
-	return this;
+SqlBuilder.prototype.query = function(name, value) {
+	return this.$scope(name, value, undefined, 10);
 };
 
-SqlBuilder.prototype.sql = function(obj) {
+SqlBuilder.prototype.sql = function() {
 	console.log('SqlBuilder.sql() is not supported.');
 	return this;
 };
@@ -504,7 +525,7 @@ SqlBuilder.prototype.toString = function() {
 	return this;
 };
 
-SqlBuilder.prototype.toQuery = function(query) {
+SqlBuilder.prototype.toQuery = function() {
 	console.log('SqlBuilder.toQuery() is not supported.');
 	return this;
 };
@@ -588,28 +609,16 @@ SqlBuilder.prototype.prepare = function() {
 
 SqlBuilder.prototype.make = function(fn) {
 	var self = this;
-	fn.call(self, self)
+	fn.call(self, self);
 	return self.agent || self;
 };
 
 function Agent(name, error) {
 	this.connection = name;
-	this.command = [];
-	this.db = null;
-	this.done = null;
-	this.last = null;
-	this.id = null;
-	this.$id = null;
-	this.isCanceled = false;
-	this.index = 0;
-	this.isPut = false;
-	this.skipCount = 0;
-	this.skips = {};
 	this.isErrorBuilder = typeof(global.ErrorBuilder) !== 'undefined' ? true : false;
 	this.errors = this.isErrorBuilder ? error : null;
-	this.time;
-	this.$primary = 'id';
-	this.results = {};
+	this.clear();
+	this.$events = {};
 
 	// Hidden:
 	// this.$when;
@@ -627,30 +636,138 @@ Agent.prototype = {
 	}
 };
 
-Agent.prototype.__proto__ = Object.create(Events.EventEmitter.prototype, {
-	constructor: {
-		value: Agent,
-		enumberable: false
-	}
-});
+Agent.embedded = function() {
+	require('mongodb-nosqlembedded').init(Agent);
+};
 
 // Debug mode (output to console)
 Agent.debug = false;
 
 Agent.connect = function(conn, callback) {
-	database.connect(conn, function(err, db) {
+	database.connect(conn, OPTIONS, function(err, db) {
 		if (err) {
 			if (callback)
 				return callback(err);
 			throw err;
 		}
+
+		if (db.db) {
+			// new mongodb
+			if (conn[conn.length - 1] === '/')
+				conn = conn.substring(0, conn.length - 1);
+			db = db.db(conn.substring(conn.lastIndexOf('/') + 1));
+		}
+
 		CONNECTIONS[conn] = db;
-		if (callback)
-			callback();
+		callback && callback();
 	});
 	return function(error) {
 		return new Agent(conn, error);
 	};
+};
+
+Agent.prototype.promise = function(index, fn) {
+	var self = this;
+
+	if (typeof(index) === 'function') {
+		fn = index;
+		index = undefined;
+	}
+
+	return new Promise(function(resolve, reject) {
+		self.exec(function(err, result) {
+			if (err)
+				reject(err);
+			else
+				resolve(fn ? fn(result) : result);
+		}, index);
+	});
+};
+
+Agent.prototype.emit = function(name, a, b, c, d, e, f, g) {
+	var evt = this.$events[name];
+	if (evt) {
+		var clean = false;
+		for (var i = 0, length = evt.length; i < length; i++) {
+			if (evt[i].$once)
+				clean = true;
+			evt[i].call(this, a, b, c, d, e, f, g);
+		}
+		if (clean) {
+			evt = evt.remove(n => n.$once);
+			if (evt.length)
+				this.$events[name] = evt;
+			else
+				this.$events[name] = undefined;
+		}
+	}
+	return this;
+};
+
+Agent.prototype.on = function(name, fn) {
+
+	if (!fn.$once)
+		this.$free = false;
+
+	if (this.$events[name])
+		this.$events[name].push(fn);
+	else
+		this.$events[name] = [fn];
+	return this;
+};
+
+Agent.prototype.once = function(name, fn) {
+	fn.$once = true;
+	return this.on(name, fn);
+};
+
+Agent.prototype.removeListener = function(name, fn) {
+	var evt = this.$events[name];
+	if (evt) {
+		evt = evt.remove(n => n === fn);
+		if (evt.length)
+			this.$events[name] = evt;
+		else
+			this.$events[name] = undefined;
+	}
+	return this;
+};
+
+Agent.prototype.removeAllListeners = function(name) {
+	if (name === true)
+		this.$events = EMPTYOBJECT;
+	else if (name)
+		this.$events[name] = undefined;
+	else
+		this.$events[name] = {};
+	return this;
+};
+
+Agent.prototype.clear = function() {
+	this.command = [];
+	this.db = null;
+	this.done = null;
+	this.last = null;
+	this.id = null;
+	this.$id = null;
+	this.isCanceled = false;
+	this.index = 0;
+	this.isPut = false;
+	this.skipCount = 0;
+	this.skips = {};
+	this.$primary = '_id';
+	this.results = {};
+	this.builders = {};
+
+	if (this.$when)
+		this.$when = undefined;
+
+	if (this.errors && this.isErrorBuilder)
+		this.errors.clear();
+	else if (this.errors)
+		this.errors = null;
+
+	return this;
 };
 
 Agent.prototype.when = function(name, fn) {
@@ -658,10 +775,10 @@ Agent.prototype.when = function(name, fn) {
 	if (!this.$when)
 		this.$when = {};
 
-	if (!this.$when[name])
-		this.$when[name] = [fn];
-	else
+	if (this.$when[name])
 		this.$when[name].push(fn);
+	else
+		this.$when[name] = [fn];
 
 	return this;
 };
@@ -674,7 +791,6 @@ Agent.prototype.priority = function() {
 		return self;
 
 	var last = self.command[length];
-
 	for (var i = length; i > -1; i--)
 		self.command[i] = self.command[i - 1];
 
@@ -693,22 +809,17 @@ Agent.query = function() {
 };
 
 Agent.prototype.skip = function(name) {
-
 	var self = this;
-
-	if (!name) {
+	if (name)
+		self.skips[name] = true;
+	else
 		self.skipCount++;
-		return self;
-	}
-
-	self.skips[name] = true;
 	return self;
 };
 
-Agent.prototype.primaryKey = Agent.prototype.primary = function(name) {
-	var self = this;
+Agent.prototype.primaryKey = Agent.prototype.primary = function() {
 	console.log('Agent.primary() is not supported.');
-	return self;
+	return this;
 };
 
 Agent.prototype.expected = function(name, index, property) {
@@ -724,15 +835,10 @@ Agent.prototype.expected = function(name, index, property) {
 		var output = self.results[name];
 		if (!output)
 			return null;
-		if (index === undefined) {
-			if (property === undefined)
-				return output;
-			return get(output, property);
-		}
+		if (index === undefined)
+			return property === undefined ? output : get(output, property);
 		output = output[index];
-		if (output)
-			return get(output, property);
-		return null;
+		return output ? get(output, property) : null;
 	};
 };
 
@@ -756,7 +862,7 @@ Agent.prototype.bookmark = function(fn) {
 
 Agent.prototype.put = function(value) {
 	var self = this;
-	self.command.push({ type: 'put', params: value, disable: value === undefined || value === null });
+	self.command.push({ type: 'put', params: value, disable: value == null });
 	return self;
 };
 
@@ -806,12 +912,15 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		return self;
 	}
 
+	if (type === 'string' && typeof(error) === 'function' && typeof(reverse) === 'string')
+		return self.validate2(fn, error, reverse);
+
 	var exec;
 
 	if (reverse) {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(true);
 			var r = results[id];
 			if (r instanceof Array)
@@ -822,8 +931,8 @@ Agent.prototype.validate = function(fn, error, reverse) {
 		};
 	} else {
 		exec = function(err, results, next) {
-			var id = fn === undefined || fn === null ? self.last : fn;
-			if (id === null || id === undefined)
+			var id = fn == null ? self.last : fn;
+			if (id == null)
 				return next(false);
 			var r = results[id];
 			if (r instanceof Array)
@@ -835,6 +944,28 @@ Agent.prototype.validate = function(fn, error, reverse) {
 	}
 
 	self.command.push({ type: 'validate', fn: exec, error: error });
+	return self;
+};
+
+// validate2('result', n => n.length > 0, 'error');
+Agent.prototype.validate2 = function(name, fn, err) {
+	var self = this;
+	var type = typeof(fn);
+
+	if (type === 'string') {
+		type = err;
+		err = fn;
+		fn = type;
+	}
+
+	var validator = function(err, results, next) {
+		if (fn(results[name]))
+			return next(true);
+		err.push(err || name);
+		next(false);
+	};
+
+	self.command.push({ type: 'validate', fn: validator, error: err });
 	return self;
 };
 
@@ -869,10 +1000,14 @@ Agent.prototype.save = function(name, table, insert, maker) {
 	}
 
 	var self = this;
-	if (insert)
+	if (insert) {
 		maker(self.insert(name, table), true);
-	else
-		maker(self.update(name, table), false);
+		return self;
+	}
+
+	var builder = self.update(name, table);
+	builder.first();
+	maker(builder, false);
 
 	return self;
 };
@@ -888,11 +1023,13 @@ Agent.prototype.insert = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
-		var self = this;
+
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
-			callback(new Error('No data for inserting.'), null);
+			var err = new Error('No data for inserting.');
+			builder.$callback && builder.$callback(err);
+			callback(err, null);
 			return;
 		}
 
@@ -907,19 +1044,72 @@ Agent.prototype.insert = function(name, table) {
 				data.$set[key] = data.$inc[key];
 			});
 
-			delete data.$inc;
+			data.$inc = undefined;
 		}
+
+		self.$events.query && self.emit('query', name, builder.debug('insert'));
 
 		db.insert(data.$set, function(err, response) {
 			var id = response ? (response.insertedCount ? (response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null) : null;
 			self.id = id;
 			if (!self.isPut)
 				self.$id = self.id;
-			callback(err, id ? { identity: id } : null);
+			var data = id ? { identity: id } : null;
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
 		});
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
+	return condition;
+};
+
+Agent.prototype.listing = function(name, table) {
+	var self = this;
+
+	if (typeof(table) !== 'string') {
+		table = name;
+		name = self.index++;
+	}
+
+	var condition = new SqlBuilder(0, 0, self);
+
+	var fn = function(db, builder, helper, callback) {
+
+		builder.prepare();
+		builder._isfirst && console.warn('You can\'t use "builder.first()" for ".listing()".');
+
+		var cursor = db.find(builder.builder);
+		cursor.project(PROJECTION);
+		cursor.count(function(err, count) {
+
+			if (err)
+				return callback(err);
+
+			self.$events.query && self.emit('query', name, builder.debug('listing'));
+			var output = {};
+			output.count = count;
+			cursor = db.find(builder.builder);
+			builder._fields && cursor.project(builder._fields);
+			builder._order && cursor.sort(builder._order);
+			builder._take && cursor.limit(builder._take);
+			builder._skip && cursor.skip(builder._skip);
+			cursor.toArray(function(err, docs) {
+				if (err)
+					return callback(err);
+				output.items = docs;
+				output.page = ((builder._skip || 0) / (builder._take || 0)) + 1;
+				output.limit = builder._take || 0;
+				output.pages = Math.ceil(output.count / output.limit);
+				builder && builder.$callback && builder.$callback(null, output);
+				callback(null, output);
+			});
+		});
+	};
+
+	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -935,39 +1125,89 @@ Agent.prototype.select = function(name, table) {
 
 	var fn = function(db, builder, helper, callback) {
 
-		builder.prepare();
-		if (builder._isfirst) {
-			if (builder._fields)
-				db.findOne(builder.builder, builder._fields, callback);
-			else
-				db.findOne(builder.builder, callback);
-			return;
-		}
+		var cb = function(err, data) {
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
+		};
 
-		var cursor = db.find(builder.builder);
-		if (builder._fields)
-			cursor.project(builder._fields);
-		if (builder._order)
-			cursor.sort(builder._order);
-		if (builder._take)
-			cursor.limit(builder._take);
-		if (builder._skip)
-			cursor.skip(builder._skip);
-		cursor.toArray(callback);
+		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('select'));
+
+		if (builder._isfirst && !builder._order) {
+			if (builder._fields)
+				db.findOne(builder.builder, { projection: builder._fields }, cb);
+			else
+				db.findOne(builder.builder, cb);
+		} else {
+			var cursor = db.find(builder.builder);
+			builder._fields && cursor.project(builder._fields);
+			builder._order && cursor.sort(builder._order);
+			builder._take && cursor.limit(builder._take);
+			builder._skip && cursor.skip(builder._skip);
+			cursor.toArray(cb);
+		}
 	};
 
 	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
+	return condition;
+};
+
+Agent.prototype.compare = function(name, table, obj, keys) {
+
+	var self = this;
+
+	if (typeof(table) !== 'string') {
+		keys = obj;
+		obj = table;
+		table = name;
+		name = self.index++;
+	}
+
+	var condition = new SqlBuilder(0, 0, self);
+	condition.first();
+
+	var fn = function(db, builder, helper, callback) {
+
+		var prop = keys ? keys : builder._fields ? Object.keys(builder._fields) : Object.keys(obj);
+
+		!builder._fields && builder.fields.apply(builder, prop);
+		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('compare'));
+
+		db.findOne(builder.builder, builder._fields ? { projection: builder._fields } : null, function(err, doc) {
+
+			if (err)
+				return callback(err);
+
+			var val = doc;
+			var diff;
+
+			if (val) {
+				diff = [];
+				for (var i = 0, length = prop.length; i < length; i++) {
+					var key = prop[i];
+					var a = val[key];
+					var b = obj[key];
+					a !== b && diff.push(key);
+				}
+			} else
+				diff = prop;
+
+			callback(null, diff.length ? { diff: diff, record: val, value: obj } : false);
+		});
+	};
+
+	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
 Agent.prototype.find = Agent.prototype.builder = function(name) {
-	var self = this;
-	for (var i = 0, length = self.command.length; i < length; i++) {
-		var command = self.command[i];
-		if (command.name === name)
-			return command.values ? command.values : command.condition;
-	}
+	return this.builders[name];
 };
+
+const EMPTYEXISTS = { projection: { _id: 1 }};
 
 Agent.prototype.exists = function(name, table) {
 	var self = this;
@@ -982,12 +1222,15 @@ Agent.prototype.exists = function(name, table) {
 
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
-		db.findOne(builder.builder, function(err, doc) {
-			callback(err, doc ? true : false);
+		self.$events.query && self.emit('query', name, builder.debug('exists'));
+		db.findOne(builder.builder, EMPTYEXISTS, function(err, doc) {
+			builder.$callback && builder.$callback(err, !!doc);
+			callback(err, !!doc);
 		});
 	};
 
 	self.command.push({ type: 'query', name: name, table: table, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1004,10 +1247,15 @@ Agent.prototype.count = function(name, table, column) {
 
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
-		db.find(builder.builder).count(callback);
+		self.$events.query && self.emit('query', name, builder.debug('count'));
+		db.find(builder.builder).count(function(err, count) {
+			builder.$callback && builder.$callback(err, count);
+			callback(err, count);
+		});
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1023,13 +1271,16 @@ Agent.prototype.max = function(name, table, column) {
 
 		builder.prepare();
 		builder.first();
+		self.$events.query && self.emit('query', name, builder.debug('max'));
 
 		var cursor = db.find(builder.builder);
 		cursor.sort(builder._order);
 		cursor.project(builder._fields);
 		cursor.limit(1);
 		cursor.toArray(function(err, response) {
-			callback(err, response && response.length ? response[0][helper] : 0);
+			var data = response && response.length ? response[0][helper] : 0;
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
 		});
 	};
 
@@ -1038,6 +1289,7 @@ Agent.prototype.max = function(name, table, column) {
 	condition.sort(column, true);
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: column });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1053,13 +1305,16 @@ Agent.prototype.min = function(name, table, column) {
 
 		builder.prepare();
 		builder.first();
+		self.$events.query && self.emit('query', name, builder.debug('min'));
 
 		var cursor = db.find(builder.builder);
 		cursor.sort(builder._order);
 		cursor.project(builder._fields);
 		cursor.limit(1);
 		cursor.toArray(function(err, response) {
-			callback(err, response && response.length ? response[0][helper] : 0);
+			var data = response && response.length ? response[0][helper] : 0;
+			builder.$callback && builder.$callback(err, data);
+			callback(err, data);
 		});
 	};
 
@@ -1068,14 +1323,15 @@ Agent.prototype.min = function(name, table, column) {
 	condition.sort(column, false);
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn, helper: column });
+	self.builders[name] = condition;
 	return condition;
 };
 
-Agent.prototype.avg = function(name, table, column) {
+Agent.prototype.avg = function(name) {
 	throw new Error('Agent.avg(' + name + ') is not supported now.');
 };
 
-Agent.prototype.updateOnly = function(name, table, values, only) {
+Agent.prototype.updateOnly = function(name, table, values) {
 	throw new Error('Agent.updateOnly(' + name + ') is not supported now.');
 };
 
@@ -1090,25 +1346,35 @@ Agent.prototype.update = function(name, table) {
 
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
+
 		builder.prepare();
 
 		if (!builder._set && !builder._inc) {
-			callback(new Error('No data for update.'), null);
+			var err = new Error('No data for update.');
+			builder.$callback && builder.$callback(err);
+			callback(err, null);
 			return;
 		}
 
+		self.$events.query && self.emit('query', name, builder.debug('update'));
+
 		if (builder._isfirst) {
 			db.updateOne(builder.builder, builder.data, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				var data = response ? (response.result.nModified || response.result.n) : 0;
+				builder.$callback && builder.$callback(err, data);
+				callback(err, data);
 			});
 		} else {
 			db.update(builder.builder, builder.data, { multi: true }, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				var data = response ? (response.result.nModified || response.result.n) : 0;
+				builder.$callback && builder.$callback(err, data);
+				callback(err, data);
 			});
 		}
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1124,18 +1390,24 @@ Agent.prototype.delete = function(name, table) {
 	var condition = new SqlBuilder(0, 0, self);
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
+		self.$events.query && self.emit('query', name, builder.debug('delete'));
 		if (builder._isfirst) {
 			db.remove(builder.builder, { single: true }, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				var data = response ? (response.result.nRemoved || response.result.n) : 0;
+				builder.$callback && builder.$callback(data);
+				callback(err, data);
 			});
 		} else {
 			db.remove(builder.builder, function(err, response) {
-				callback(err, response ? response.result.nModified > 0 : false);
+				var data = response ? (response.result.nRemoved || response.result.n) : 0;
+				builder.$callback && builder.$callback(data);
+				callback(err, data);
 			});
 		}
 	};
 
 	self.command.push({ type: 'query', table: table, name: name, condition: condition, fn: fn });
+	self.builders[name] = condition;
 	return condition;
 };
 
@@ -1146,10 +1418,14 @@ Agent.prototype.remove = function(name, table) {
 Agent.prototype.ifnot = function(name, fn) {
 	var self = this;
 	self.prepare(function(error, response, resume) {
-		if (response[name])
+		var value = response[name];
+		if (value instanceof Array) {
+			if (value.length)
+				return resume();
+		} else if (value)
 			return resume();
-		fn.call(self, error, response);
-		resume();
+		fn.call(self, error, response, value);
+		setImmediate(resume);
 	});
 	return self;
 };
@@ -1157,10 +1433,16 @@ Agent.prototype.ifnot = function(name, fn) {
 Agent.prototype.ifexists = function(name, fn) {
 	var self = this;
 	self.prepare(function(error, response, resume) {
-		if (!response[name])
+
+		var value = response[name];
+		if (value instanceof Array) {
+			if (!value.length)
+				return resume();
+		} else if (!value)
 			return resume();
-		fn.call(self, error, response);
-		resume();
+
+		fn.call(self, error, response, value);
+		setImmediate(resume);
 	});
 	return self;
 };
@@ -1172,6 +1454,7 @@ Agent.prototype.destroy = function(name) {
 		if (item.name !== name)
 			continue;
 		self.command.splice(i, 1);
+		delete self.builders[name];
 		return true;
 	}
 	return false;
@@ -1179,16 +1462,14 @@ Agent.prototype.destroy = function(name) {
 
 Agent.prototype.close = function() {
 	var self = this;
-	if (self.done)
-		self.done();
+	self.done && self.done();
 	self.done = null;
 	return self;
 };
 
 Agent.prototype.rollback = function(where, e, next) {
 	var self = this;
-	if (self.errors)
-		self.errors.push(e);
+	self.errors && self.errors.push(e);
 	next();
 };
 
@@ -1257,9 +1538,7 @@ Agent.prototype._prepare = function(callback) {
 
 		if (item.type === 'prepare') {
 			try {
-				item.fn(self.errors, self.results, function() {
-					next();
-				});
+				item.fn(self.errors, self.results, () => next());
 			} catch (e) {
 				self.rollback('prepare', e, next);
 			}
@@ -1307,7 +1586,7 @@ Agent.prototype._prepare = function(callback) {
 				}
 
 				self.results[item.name] = response;
-				self.emit('data', item.name, response);
+				self.$events.data && self.emit('data', item.name, response);
 				next();
 			});
 			return;
@@ -1328,27 +1607,32 @@ Agent.prototype._prepare = function(callback) {
 				return;
 			}
 
-			self.results[item.name] = response;
-			self.emit('data', item.name, response);
+			var val = item.condition._isfirst && item.condition._order ? (response instanceof Array ? response[0] : response) : response;
+			self.results[item.name] = val;
+			self.$events.data && self.emit('data', item.name, val);
 
 			if (!self.$when) {
 				next();
-				return
+				return;
 			}
 
 			var tmp = self.$when[item.name];
 			if (tmp) {
 				for (var i = 0, length = tmp.length; i < length; i++)
-					tmp[i](self.errors, self.results);
+					tmp[i](self.errors, self.results, self.results[item.name]);
 			}
 			next();
 		});
 
 	}, function() {
-		self.time = Date.now() - self.debugtime;
+
+		if (Agent.debug || self.debug) {
+			self.time = Date.now() - self.debugtime;
+			console.log(self.debugname, '----- done (' + self.time + ' ms)');
+		}
+
 		self.index = 0;
-		if (self.done)
-			self.done();
+		self.done && self.done();
 		self.done = null;
 		var err = null;
 
@@ -1358,13 +1642,8 @@ Agent.prototype._prepare = function(callback) {
 		} else if (self.errors.length)
 			err = self.errors;
 
-		if (Agent.debug)
-			console.log(self.debugname, '----- done (' + self.time + ' ms)');
-
-		self.emit('end', err, self.results, self.time);
-
-		if (callback)
-			callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
+		self.$events.end && self.emit('end', err, self.results, self.time);
+		callback && callback(err, self.returnIndex !== undefined ? self.results[self.returnIndex] : self.results);
 	});
 
 	return self;
@@ -1374,7 +1653,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 
 	var self = this;
 
-	if (Agent.debug) {
+	if (Agent.debug || self.debug) {
 		self.debugname = 'sqlagent/mongodb (' + Math.floor(Math.random() * 1000) + ')';
 		self.debugtime = Date.now();
 	}
@@ -1382,23 +1661,24 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	if (returnIndex !== undefined && typeof(returnIndex) !== 'boolean')
 		self.returnIndex = returnIndex;
 	else
-		delete self.returnIndex;
+		self.returnIndex = undefined;
 
 	if (!self.command.length) {
-		if (callback)
-			callback.call(self, null, {});
+		callback && callback.call(self, null, {});
 		return self;
 	}
 
-	if (Agent.debug)
-		console.log(self.debugname, '----- exec');
+	(Agent.debug || self.debug) && console.log(self.debugname, '----- exec');
 
 	connect(self.connection, function(err, db) {
+
 		if (err) {
-			if (callback)
-				return callback.call(self, err, {});
-			throw err;
+			!self.errors && (self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : []);
+			self.errors.push(err);
+			callback && callback.call(self, self.errors, {});
+			return;
 		}
+
 		self.db = db;
 		self._prepare(callback);
 	});
@@ -1419,9 +1699,7 @@ function connect(conn, callback, index) {
 	if (index === undefined)
 		index = 1;
 
-	setTimeout(function() {
-		connect(conn, callback, index + 1);
-	}, 100);
+	setTimeout(() => connect(conn, callback, index + 1), 100);
 }
 
 Agent.prototype.$$exec = function(returnIndex) {
@@ -1435,60 +1713,11 @@ Agent.destroy = function() {
 	throw new Error('Not supported.');
 };
 
-Agent.prototype.readFile = function(id, callback) {
-	connect(this.connection, function(err, db) {
+Agent.prototype.readFile = function(id, options, callback) {
 
-		if (err)
-			return callback(err);
-
-		var reader = new GridStore(db, id, 'r');
-		reader.open(function(err, fs) {
-			if (err) {
-				reader.close();
-				reader = null;
-				return callback(err, undefined, NOOP);
-			}
-
-			callback(null, fs, function() {
-				reader.close();
-				reader = null;
-			}, fs.metadata, fs.length, fs.filename);
-		});
-	});
-};
-
-Agent.prototype.readStream = function(id, callback) {
-	connect(this.connection, function(err, db) {
-		if (err)
-			return callback(err);
-
-		var reader = new GridStore(db, id, 'r');
-		reader.open(function(err, fs) {
-
-			if (err) {
-				reader.close();
-				reader = null;
-				if (callback)
-					callback(err);
-				return;
-			}
-
-			var stream = fs.stream(true);
-			callback(null, stream, fs.metadata, fs.length, fs.filename);
-			stream.on('close', function() {
-				reader.close();
-				reader = null;
-			});
-		});
-	});
-};
-
-Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
-
-	if (typeof(meta) === 'function') {
-		var tmp = callback;
-		callback = meta;
-		meta = tmp;
+	if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
 	}
 
 	connect(this.connection, function(err, db) {
@@ -1496,81 +1725,205 @@ Agent.prototype.writeFile = function(id, filename, name, meta, callback) {
 		if (err)
 			return callback(err);
 
-		var arg = [];
-		var grid = new GridStore(db, id, name, 'w', { metadata: meta });
-		grid.open(function(err, fs) {
+		var bucket = new database.GridFSBucket(db, options);
 
-			if (err) {
-				grid.close();
-				grid = null;
-				if (callback)
-					callback(err);
-				return;
-			}
-
-			grid.writeFile(filename, function(err) {
-				grid.close();
-				grid = null;
-				if (!callback)
-					return;
-				callback(err);
+		if (bucket.openUploadStream) {
+			console.error('SQLAgent error: readFile() is not supported for MongoDB, use readStream().');
+		} else {
+			FILEREADERFILTER._id = id;
+			bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
+				if (!err && !doc)
+					err = new Error('File not found.');
+				if (err)
+					return callback(err, null, NOOP);
+				callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket), NOOP, doc.metadata, doc.length, doc.filename);
 			});
-		});
+		}
 	});
 };
 
-Agent.prototype.writeBuffer = function(id, buffer, name, meta, callback) {
+Agent.prototype.readStream = function(id, options, callback) {
+
+	if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+
+	connect(this.connection, function(err, db) {
+
+		if (err)
+			return callback(err);
+
+		var bucket = new database.GridFSBucket(db, options);
+
+		if (bucket.openUploadStream) {
+			FILEREADERFILTER._id = id;
+			db.collection('fs.files').findOne(FILEREADERFILTER, function(err, doc) {
+				if (!err && !doc)
+					err = new Error('File not found.');
+				if (err)
+					return callback(err, null, NOOP);
+
+				callback(null, bucket.openDownloadStream(id), doc.metadata, doc.length, doc.filename);
+			});
+		} else {
+			FILEREADERFILTER._id = id;
+
+			bucket.find(FILEREADERFILTER).nextObject(function(err, doc) {
+				if (!err && !doc)
+					err = new Error('File not found.');
+				if (err)
+					return callback(err);
+				callback(null, new GridFSObject(doc._id, doc.metadata, doc.filename, doc.length, doc.contentType, bucket).stream(true), doc.metadata, doc.length, doc.filename);
+			});
+		}
+	});
+
+	return this;
+};
+
+Agent.prototype.writeFile = function(id, file, name, meta, options, callback) {
+	var self = this;
+
+	if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+
+	if (typeof(meta) === 'function') {
+		var tmp = callback;
+		callback = meta;
+		meta = tmp;
+	}
+
+	connect(self.connection, function(err, db) {
+
+		if (err) {
+			self.errors && self.errors.push(err);
+			return callback(err);
+		}
+
+		var bucket = new database.GridFSBucket(db, options);
+		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
+		var stream = typeof(file.pipe) === 'function' ? file : Fs.createReadStream(file);
+
+		stream.pipe(upload).once('finish', function() {
+			callback && callback(null);
+			callback = null;
+		}).once('error', function(err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			callback = null;
+		});
+	});
+
+	return self;
+};
+
+Agent.prototype.writeStream = function(id, stream, name, meta, options, callback) {
+	var self = this;
 
 	if (!callback)
 		callback = NOOP;
 
+	if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+
 	if (typeof(meta) === 'function') {
 		var tmp = callback;
 		callback = meta;
 		meta = tmp;
 	}
 
-	connect(this.connection, function(err, db) {
+	connect(self.connection, function(err, db) {
 
-		if (err)
-			return callback(err);
+		if (err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			return;
+		}
 
-		var grid = new GridStore(db, id ? id : new ObjectID(), name, 'w', { metadata: meta });
+		var bucket = new database.GridFSBucket(db, options);
+		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
 
-		grid.open(function(err, fs) {
+		upload.once('finish', function(err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			callback = null;
+		});
 
-			if (err) {
-				grid.close();
-				grid = null;
-				return callback(err);
-			}
+		stream.pipe(upload);
+	});
 
-			grid.write(buffer, function(err) {
-				grid.close();
-				grid = null;
-				if (err)
-					callback(err);
-				callback(null);
-			});
+	return self;
+};
+
+Agent.prototype.writeBuffer = function(id, buffer, name, meta, options, callback) {
+	var self = this;
+
+	if (!callback)
+		callback = NOOP;
+
+	if (typeof(options) === 'function') {
+		callback = options;
+		options = null;
+	}
+
+	if (typeof(meta) === 'function') {
+		var tmp = callback;
+		callback = meta;
+		meta = tmp;
+	}
+
+	connect(self.connection, function(err, db) {
+
+		if (err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			return;
+		}
+
+		var bucket = new database.GridFSBucket(db, options);
+		var upload = bucket.openUploadStreamWithId(id, name, meta ? { metadata: meta } : undefined);
+
+		upload.end(buffer, function(err) {
+			self.errors && self.errors.push(err);
+			callback && callback(err);
+			callback = null;
 		});
 	});
+
+	return self;
 };
 
 Agent.init = function(conn, debug) {
 	Agent.debug = debug ? true : false;
 
-	framework.wait('database');
-	database.connect(conn, function(err, db) {
+	F.wait('database');
+
+	database.connect(conn, OPTIONS, function(err, db) {
 		if (err)
 			throw err;
+
+		if (db.db) {
+			// new mongodb
+			if (conn[conn.length - 1] === '/')
+				conn = conn.substring(0, conn.length - 1);
+			db = db.db(conn.substring(conn.lastIndexOf('/') + 1));
+		}
+
 		CONNECTIONS[conn] = db;
-		framework.wait('database');
-		framework.emit('database');
+		F.wait('database');
+		EMIT('database', conn);
 	});
 
-	framework.database = function(errorBuilder) {
+	F.database = function(errorBuilder) {
 		return new Agent(conn, errorBuilder);
 	};
+
+	return Agent;
 };
 
 module.exports = Agent;
@@ -1592,7 +1945,7 @@ ObjectID.parse = function(value, isArray) {
 
 ObjectID.parseArray = function(value) {
 
-	if (typeof(value) === STRING)
+	if (typeof(value) === 'string')
 		value = value.split(',');
 
 	var arr = [];
@@ -1602,8 +1955,7 @@ ObjectID.parseArray = function(value) {
 
 	for (var i = 0, length = value.length; i < length; i++) {
 		var id = ObjectID.parse(value[i]);
-		if (id)
-			arr.push(id);
+		id && arr.push(id);
 	}
 
 	return arr;
@@ -1629,7 +1981,20 @@ function get(obj, path) {
 		builder.push('if(!w.' + p + ')return');
 	}
 
-	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(/\'/, '\'')));
+	var fn = (new Function('w', builder.join(';') + ';return w.' + path.replace(REG_APO, '\'')));
 	columns_cache[cachekey] = fn;
 	return fn(obj);
+}
+
+function GridFSObject(id, meta, filename, length, type, bucket) {
+	this.id = id;
+	this.meta = meta;
+	this.filename = filename;
+	this.length = length;
+	this.type = type;
+	this.bucket = bucket;
+}
+
+GridFSObject.prototype.stream = function() {
+	return this.bucket.openDownloadStream(this.id);
 };

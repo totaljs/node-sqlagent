@@ -1,19 +1,21 @@
-[![NPM version][npm-version-image]][npm-url] [![NPM downloads][npm-downloads-image]][npm-url] [![MIT License][license-image]][license-url]
-
 # A very helpful ORM for node.js
 
-`npm install sqlagent`
+[![Professional Support](https://www.totaljs.com/img/badge-support.svg)](https://www.totaljs.com/support/) [![Chat with contributors](https://www.totaljs.com/img/badge-chat.svg)](https://messenger.totaljs.com) [![NPM version][npm-version-image]][npm-url] [![NPM downloads][npm-downloads-image]][npm-url] [![MIT License][license-image]][license-url]
 
-- for PostgreSQL `npm install pg`
-- for MySQL `npm install mysql`
-- for MS SQL Server `npm install mssql`
-- for MongoDB `npm install mongodb`
+- installation `$ npm install sqlagent`
+
+---
+
+- for PostgreSQL `$ npm install pg`
+- for MySQL `$ npm install mysql`
+- for MS SQL Server `$ npm install mssql`
+- for MongoDB `$ npm install mongodb`
 
 ---
 
 - Currently supports __PostgreSQL__, __MySQL__, __SQL Server__ and __MongoDB__
 - Simple and powerful
-- Best use with [total.js - web application framework for node.js](https://www.totaljs.com)
+- Best use with [Total.js - web framework for Node.js](https://www.totaljs.com)
 
 __IMPORTANT__:
 
@@ -21,18 +23,33 @@ __IMPORTANT__:
 - `rollback` is executed automatically when is the transaction enabled
 - SQL Server: pagination works only in `SQL SERVER >=2012`
 - `SqlBuilder` is a global object
+- `undefined` values are skipped
 
-## Initialization
+## Initialization
 
 ### Basic initialization
 
-#### PostgreSQL
+#### PostgreSQL
 
 ```javascript
-// Example: postgre://user:password@127.0.0.1/database
+// Example: postgresql://user:password@127.0.0.1/database
 var Agent = require('sqlagent/pg').connect('connetion-string-to-postgresql');
-var sql = new Agent();
+
+// Agent() returns new instance of SQL Agent
+var sql = Agent();
 ```
+
+__Additional configuration__:
+
+```
+postgresql://user:password@127.0.0.1/database?native=true&ssl=true
+```
+
+- `native` {Boolean} enables PG C native binding (faster than JavaScript binding, default: `false`)
+- `ssl` {Boolean} enables SSL (default: `false`)
+- `max` {Number} max. pools (default: `20`)
+- `min` {Number} min. pools (default: `4`)
+- `idleTimeoutMillis` {Number} idle timeout (default: `1000`)
 
 #### MySQL
 
@@ -46,6 +63,7 @@ var sql = new Agent();
 
 ```javascript
 // Example: mssql://user:password@127.0.0.1/database
+// Example with name of instance: mssql://user:password@localhost_SQLEXPRESS/database
 var Agent = require('sqlagent/sqlserver').connect('connetion-string-to-mssql');
 var sql = new Agent();
 ```
@@ -58,7 +76,7 @@ var Agent = require('sqlagent/mongodb').connect('connetion-string-to-mongodb');
 var nosql = new Agent();
 ```
 
-### Initialization for total.js
+### Initialization for Total.js
 
 Create a definition file:
 
@@ -68,11 +86,18 @@ require('sqlagent/pg').init('connetion-string-to-postgresql', [debug]); // debug
 require('sqlagent/mysql').init('connetion-string-to-mysql', [debug]); // debug is by default: false
 require('sqlagent/sqlserver').init('connetion-string-to-sqlserver', [debug]); // debug is by default: false
 require('sqlagent/mongodb').init('connetion-string-to-mongodb', [debug]); // debug is by default: false
+```
 
+Usage:
+
+```javascript
 // When you use RDMBS:
 // var sql = DATABASE([ErrorBuilder]);
 var sql = DATABASE();
 // sql === SqlAgent
+
+// +v9.9.6 enable debugging
+sql.debug = true;
 
 // When you use MongoDB:
 // var nosql = DATABASE([ErrorBuilder]);
@@ -80,9 +105,29 @@ var nosql = DATABASE();
 // nosql === SqlAgent
 ```
 
+### IMPORTANT
+
+In order for mysql to return Boolean values please set the data type in db to BIT(1) and use bellow code for initialization.
+```javascript
+var Agent = require('sqlagent/mysql').connect({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "test",
+    typeCast: function castField( field, useDefaultTypeCasting ) {
+        if ( ( field.type === "BIT" ) && ( field.length === 1 ) ) {
+            var bytes = field.buffer();
+            return( bytes[ 0 ] === 1 );
+        }
+        return( useDefaultTypeCasting() );
+    }
+});
+var sql = new Agent();
+```
+
 ## Usage
 
-### Select
+### Select
 
 ```plain
 instance.select([name], table)
@@ -118,6 +163,68 @@ sql.exec(function(err, response) {
     console.log(response.admin);
 });
 ```
+
+### Push (only for MongoDB)
+
+```plain
+instance.push([name], collection, fn(collection, callback(err, response))
+```
+
+```javascript
+sql.push('users', 'users', function(collection, callback) {
+
+    var $group = {};
+    $group._id = {};
+    $group._id = '$category';
+    $group.count = { $sum: 1 };
+
+    var $match = {};
+    $match.isremoved = false;
+
+    var pipeline = [];
+    pipeline.push({ $match: $match });
+    pipeline.push({ $group: $group });
+
+    collection.aggregate(pipeline, callback);
+});
+
+// OR
+
+sql.push('users', 'users', function(collection, callback) {
+    collection.findOne({ name: 'Peter' }, { name: 1, age: 1 }).toArray(callback);
+});
+```
+
+### Listing
+
+```plain
+instance.listing([name], table)
+```
+
+- `name` (String) is an identificator for results, optional (default: internal indexer)
+- `table` (String) table name, the library automatically creates SQL query
+- __returns__ SqlBuilder
+
+```javascript
+sql.listing('users', 'tbl_user').make(function(builder) {
+    builder.where('id', '>', 5);
+    builder.page(10, 10);
+});
+
+sql.exec(function(err, response) {
+
+    // users will contain:
+    // .count --> count of all users according to the filter
+    // .items --> selected items
+    // .page  --> a page number (+v11.0.0)
+    // .pages --> page count (+v11.0.0)
+    // .limit --> items limit per page (+v11.0.0)
+
+    console.log(response.users.count);
+    console.log(response.users.items);
+});
+```
+
 
 ### Save
 
@@ -165,6 +272,8 @@ sql.exec(function(err, response) {
     console.log(response.log); // response.log.identity (INSERTED IDENTITY)
 });
 ```
+
+__IMPORTANT__: `identity` works only with auto-increment in MS SQL SERVER.
 
 ### Update
 
@@ -224,6 +333,7 @@ instance.query([name], query)
 
 - `name` (String) is an identificator for results, optional (default: internal indexer)
 - `query` (String) SQL query
+- `params` (Array) SQL additional params (each DB has own SQL implementation e.g. PG `WHERE id=$1`, MySQL `WHERE id=?`, etc.)
 - __returns__ if params is undefined then __SqlBuilder__ otherwise __SqlAgent__
 
 ```javascript
@@ -286,6 +396,34 @@ exists.where('id', 35);
 
 sql.exec(function(err, response) {
     console.log(response.user); // response.user === Boolean (in correct case otherwise undefined)
+});
+```
+
+### Compare
+
+```plain
+instance.compare([name], table, value, [keys])
+```
+
+- the module compares values between DB and `value`
+- the response can be `false` or `{ diff: ['name'], record: Object, value: Object }`
+- works with `sql.ifexists()` and `sql.ifnot()`
+- __returns__ SqlBuilder
+
+```javascript
+var compare = sql.compare('user', 'tbl_user', { name: 'Peter', age: 33 });
+// OR: var compare = sql.compare('user', 'tbl_user', { name: 'Peter', age: 33 }, ['name']); --> compares only name field
+// OR: compare.fields('name', 'age'); --> compares these fields (if aren't defined "keys")
+
+compare.where('id', 35);
+
+sql.exec(function(err, response) {
+
+    if (response.user) {
+        // shows the property names which were changed
+        console.log(response.user.diff);
+    }
+
 });
 ```
 
@@ -381,15 +519,15 @@ sql.exec();
 ### If not or If exists
 
 ```javascript
-instance.ifnot('user', function(error, response) {
+instance.ifnot('user', function(error, response, value) {
     // error === ErrorBuilder
-    // It will be executed when the results won't be contain `user` property
+    // It will be executed when the results `user` contains a negative value or array.length === 0
     // Is executed in order
 });
 
-instance.ifexists('user', function(error, response) {
+instance.ifexists('user', function(error, response, value) {
     // error === ErrorBuilder
-    // It will be executed when the results will contain `user` property
+    // It will be executed when the results `user` contains a positive value or array.length > 0
     // Is executed in order
 });
 ```
@@ -557,9 +695,30 @@ sql.validate('Sorry, address not found for the current user', 'address');
 sql.exec();
 ```
 
+__Validation alternative (+v8.0.0)__
+
+```javascript
+sql.validate('products', n => n.length > 0, 'error-products');
+sql.validate('detail', n => !n, 'error-detail');
+```
+
+
 ## Global
 
-### Skipper
+### Stored procedures
+
+```javascript
+sql.query('myresult', 'exec myprocedure');
+
+// with params
+// sql.query('myresult', 'exec myprocedure $1', [3403]);
+
+sql.exec(function(err, response) {
+    console.log(response.myresult);
+});
+```
+
+### Skipper
 
 ```javascript
 sql.select('users', 'tbl_users');
@@ -629,6 +788,19 @@ sql.validate('error-orders-empty');
 sql.validate('error-users-empty', 'users');
 ```
 
+### Escaping values
+
+- doesn't work with MongoDB
+
+```javascript
+var escaped1 = Agent.escape(value);
+
+// or ...
+
+var sql = new Agent();
+var escaped2 = sql.escape(value);
+```
+
 ### Predefined queries
 
 - doesn't work with MongoDB
@@ -655,12 +827,12 @@ sql.exec(function(err, response) {
 - `+3.1.0`
 
 ```javascript
-sql.when('users', function(error, response) {
-    console.log(response.users);
+sql.when('users', function(error, response, value) {
+    console.log(value);
 });
 
-sql.when('orders', function(error, response) {
-    console.log(response.orders);
+sql.when('orders', function(error, response, value) {
+    console.log(value);
 });
 
 sql.select('users', 'tbl_users');
@@ -670,7 +842,7 @@ sql.exec();
 
 ## Bonus
 
-### How to get latest inserted ID?
+### How to get latest inserted ID?
 
 - doesn't work with MongoDB
 
@@ -712,7 +884,7 @@ sql.exec(function(err, response) {
 
 ### Events
 
-```
+```javascript
 sql.on('query', function(name, query, params){});
 sql.on('data', function(name, response){});
 sql.on('end', function(err, response, time){});
@@ -757,7 +929,7 @@ sql.priority(); // --> takes last item in queue and inserts it as first (sorts i
 ```
 
 
-### Debug mode
+### Debug mode
 
 Debug mode writes each query to console.
 
@@ -798,7 +970,20 @@ sql.exec(function(err, response) {
 
 ---
 
-#### builder.set()
+#### builder.callback(fn)
+
+```plain
+builder.callback(function(err, response) {
+
+});
+```
+
+`+v11.0.0` returns a value from DB
+
+
+---
+
+#### builder.set()
 
 ```plain
 builder.set(name, value)
@@ -811,7 +996,7 @@ adds a value for update or insert
 
 ---
 
-#### builder.raw()
+#### builder.raw()
 
 ```plain
 builder.raw(name, value)
@@ -838,7 +1023,7 @@ builder.set({ name: 'Peter', age: 30 });
 
 ---
 
-#### builder.inc()
+#### builder.inc()
 
 ```plain
 builder.set(name, [type], value)
@@ -862,7 +1047,7 @@ builder.inc('credits', '-1');
 
 ---
 
-#### builder.rem()
+#### builder.rem()
 
 ```plain
 builder.rem(name)
@@ -876,7 +1061,7 @@ builder.rem('name');
 
 ---
 
-#### builder.sort()
+#### builder.sort()
 
 ```plain
 builder.sort(name, [desc])
@@ -887,9 +1072,17 @@ adds sorting
 - `name` (String) column name
 - `desc` (Boolean), default: false
 
+#### builder.random()
+
+```plain
+builder.random()
+```
+
+Reads random rows. __IMPORTANT__: MongoDB doesn't support this feature.
+
 ---
 
-#### builder.skip()
+#### builder.skip()
 
 ```plain
 builder.skip(value)
@@ -900,7 +1093,7 @@ skips records
 
 ---
 
-#### builder.take()
+#### builder.take()
 
 ```plain
 builder.take(value)
@@ -912,7 +1105,7 @@ takes records
 
 ---
 
-#### builder.page()
+#### builder.page()
 
 ```plain
 builder.page(page, maxItemsPerPage)
@@ -924,7 +1117,7 @@ sets automatically sql.skip() and sql.take()
 
 ---
 
-#### builder.first()
+#### builder.first()
 
 ```plain
 builder.first()
@@ -933,7 +1126,7 @@ sets sql.take(1)
 
 ---
 
-#### builder.join()
+#### builder.join()
 
 - doesn't work with MongoDB
 
@@ -999,7 +1192,7 @@ adds having in SQL query
 ```plain
 builder.and()
 ```
-adds AND to SQL query
+adds AND to SQL query. __IMPORTANT__: In MongoDB has to be this operator used before all queries.
 
 ---
 
@@ -1008,7 +1201,7 @@ adds AND to SQL query
 ```plain
 builder.or()
 ```
-adds OR to SQL query
+adds OR to SQL query. __IMPORTANT__: In MongoDB has to be this operator used before all queries.
 
 ---
 
@@ -1081,6 +1274,19 @@ adds a custom SQL to SQL query
 builder.sql('age=? AND name=?', 20, 'Peter');
 ```
 
+#### builder.query()
+
+- works with MongoDB
+
+```plain
+builder.query(fieldname, filter)
+```
+adds a custom QUERY to filter.
+
+```javascript
+builder.query('tags', { $size: 0 });
+```
+
 ---
 
 #### builder.scope()
@@ -1093,11 +1299,21 @@ adds a scope `()`
 ```javascript
 builder.where('user', 'person');
 builder.and();
+
+// RDMBS:
 builder.scope(function() {
     builder.where('type', 20);
     builder.or();
     builder.where('age', '<', 20);
 });
+
+// MongoDB:
+builder.scope(function() {
+    builder.or();
+    builder.where('type', 20);
+    builder.where('age', '<', 20);
+});
+
 // creates: user='person' AND (type=20 OR age<20)
 ```
 
@@ -1128,7 +1344,7 @@ sql.exec();
 ```plain
 builder.schema()
 ```
-sets current schema for `join`, `where`, `in`, `between`, `field`, `fields`, `like`
+sets current schema for `where`, `in`, `between`, `field`, `fields`, `like`
 
 ```javascript
 builder.schema('b');
@@ -1163,9 +1379,9 @@ builder.fields('!COUNT(id) --> number'); // Raw field with casting: COUNT(id)::i
 #### builder.replace()
 
 ```plain
-builder.replace(builder)
+builder.replace(builder, [reference])
 ```
-replaces current instance of SqlBuilder with new.
+replaces current instance of SqlBuilder with new. The argument `reference` (default: `false`) when is `true` creates a reference to `builder` (it doesn't clone it). Better performance with lower memory.
 
 - `builder` (SqlBuilder) Another instance of SqlBuilder.
 
@@ -1183,9 +1399,8 @@ creates escaped SQL query (internal)
 
 ## Blob
 
-### PostgreSQL
+### PostgreSQL
 
-- `npm install pg-large-object`
 - all file operations are executed just-in-time (you don't need to call `sql.exec()`)
 - all file operations aren't executed in queue
 
@@ -1194,16 +1409,16 @@ creates escaped SQL query (internal)
 sql.writeStream(Fs.createReadStream('/file.png'), function(err, loid) {
     // Now is the file inserted
     // Where is the file stored?
-    
+
     // loid === NUMBER
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
 
 // sql.writeBuffer(buffer, callback(err, loid))
-sql.writeBuffer(new Buffer('Peter Širka', 'utf8'), function(err, loid) {
+sql.writeBuffer(Buffer.from('Peter Širka', 'utf8'), function(err, loid) {
     // Now is the buffer inserted
     // Where is the buffer stored?
-    
+
     // loid === NUMBER
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
@@ -1216,32 +1431,74 @@ sql.readStream(loid, function(err, stream, size) {
 
 ### MongoDB
 
-- all file operations are executed just-in-time (you don't need to call `sql.exec()`)
-- all file operations aren't executed in queue
+- all file operations are executed immediately, there's no need to call sql.exec()
 
 ```javascript
-// nosql.writeFile(id, filename, name, [metadata], callback)
-nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
-    // Now is the file inserted
+// nosql.writeStream(id, stream, filename, [metadata], [options], callback)
+nosql.writeStream(new ObjectID(), Fs.createReadStream('logo.png'), 'logo.png', function(err) {
+    // Now is the stream inserted
 });
 
-// nosql.writeBuffer(id, buffer, filename, [metadata], callback)
-nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), 'petersirka.txt', function(err) {
-    // Now is the buffer inserted    
-});
-
-// nosql.readFile(id, callback(err, gs, close, metadata, size, filename))
-nosql.readFile(some_object_id, function(err, gs, close, metadata, size, filename) {
-    // gs = GridStore
-    // gs.stream(true);
-    close();
-});
-
-// nosql.readStream(id, callback(err, stream, metadata, size, filename))
+// nosql.readStream(id, [options], callback(err, stream, metadata, size, filename))
 nosql.readStream(id, function(err, stream, metadata, size, filename) {
     stream.pipe(Fs.createWriteStream('myfile.png'));
 });
+
+// get file info
+nosql.select('fs.files').make(function(builder){
+    // available fields - _id,filename,contentType,length,chunkSize,uploadDate,aliases,metadata,md5
+    builder.fields('filename', 'metadata');
+});
+
+nosql.exec(function(err, results){
+    console.log(results);
+});
 ```
+
+## Global events
+
+__Global events__:
+
+```javascript
+ON('database', function() {
+    // Database is ready
+});
+```
+
+## Async/Await
+
+`+v12.0.0` supports `sql.promise([name], [callback(response)])` for using of async/await.
+
+- `sql.promise()` performs `sql.exec()`
+- look to example below:
+
+```javascript
+var Agent = require('sqlagent/pg').connect('...');
+
+async function data() {
+    var b = new Agent();
+    b.select('users', 'tbl_users');
+    var users = await b.promise('users');
+    console.log(users);
+}
+
+data();
+```
+
+## Contributors
+
+| Contributor | Type | E-mail |
+|-------------|------|--------|
+| [Peter Širka](https://github.com/JozefGula) | author + support | <petersirka@gmail.com> |
+| [Martin Smola](https://github.com/molda) | contributor + support | <smola.martin@gmail.com> |
+| [Jay Kelkar](https://github.com/jkelkar) | contributor | <jkelkar@gmail.com> |
+| [Aidan Dunn](https://github.com/Aidan-Chey) | contributor | <aidancheyd@gmail.com> |
+
+## Contact
+
+Do you have any questions? Contact us <https://www.totaljs.com/contact/>
+
+[![Professional Support](https://www.totaljs.com/img/badge-support.svg)](https://www.totaljs.com/support/) [![Chat with contributors](https://www.totaljs.com/img/badge-chat.svg)](https://messenger.totaljs.com)
 
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
 [license-url]: license.txt
