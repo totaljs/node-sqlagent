@@ -553,6 +553,14 @@ SqlBuilder.prototype.between = function(name, valueA, valueB) {
 	return self;
 };
 
+SqlBuilder.prototype.overlaps = function(valueA, valueB, columnA, columnB) {
+    var self = this;
+    self.checkOperator();
+    self.builder.push('OVERLAPS(' + SqlBuilder.escape(valueA) + ',' + SqlBuilder.escape(valueB) + ',' + SqlBuilder.column(columnA, self._schema) + ',' + SqlBuilder.column(columnB, self._schema) + ')');
+    self._is = true;
+    return self;
+};
+
 SqlBuilder.prototype.query = function(sql) {
 	return this.sql(sql);
 };

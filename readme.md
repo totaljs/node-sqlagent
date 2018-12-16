@@ -1037,6 +1037,21 @@ adds between to SQL query
 
 ---
 
+#### builder.overlaps()
+
+```plain
+builder.overlaps(valueA, valueB, columnA, columnB)
+```
+- __only for PostgreSQL SERVER__
+adds overlaps to SQL query
+
+- `valueA` (String, Number, Date)
+- `valueB` (String, Number, Date)
+- `columnA` (String), column A name
+- `columnB` (String), column B name
+
+---
+
 #### builder.like()
 
 ```plain
@@ -1178,7 +1193,7 @@ creates escaped SQL query (internal)
 sql.writeStream(Fs.createReadStream('/file.png'), function(err, loid) {
     // Now is the file inserted
     // Where is the file stored?
-    
+
     // loid === NUMBER
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
@@ -1187,7 +1202,7 @@ sql.writeStream(Fs.createReadStream('/file.png'), function(err, loid) {
 sql.writeBuffer(new Buffer('Peter Širka', 'utf8'), function(err, loid) {
     // Now is the buffer inserted
     // Where is the buffer stored?
-    
+
     // loid === NUMBER
     // SELECT * FROM pg_largeobject WHERE loid=loid
 });
@@ -1211,7 +1226,7 @@ nosql.writeFile(new ObjectID(), '/path/file.png', 'file.png', function(err) {
 
 // nosql.writeBuffer(id, buffer, filename, [metadata], callback)
 nosql.writeBuffer(new ObjectID(), new Buffer('Peter Širka', 'utf8'), 'petersirka.txt', function(err) {
-    // Now is the buffer inserted    
+    // Now is the buffer inserted
 });
 
 // nosql.readFile(id, callback(err, gs, close, metadata, size, filename))
