@@ -1718,9 +1718,10 @@ Agent.prototype.exec = function(callback, returnIndex) {
 			var auth = options.auth;
 			if (auth) {
 				auth = auth.split(':');
-				self.options.user = auth[0];
-				self.options.password = auth[1];
+				self.options.user = decodeURIComponent(auth[0]);
+				self.options.password = decodeURIComponent(auth[1]);
 			}
+			console.log(self.options);
 		}
 		pools_cache[self.$conn] = database.createPool(self.options);
 	}
