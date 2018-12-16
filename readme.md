@@ -1042,7 +1042,8 @@ adds between to SQL query
 ```plain
 builder.overlaps(valueA, valueB, columnA, columnB)
 ```
-- __only for PostgreSQL SERVER__
+- __only for PostgreSQL__
+
 adds overlaps to SQL query
 
 - `valueA` (String, Number, Date)
