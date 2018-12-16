@@ -1230,6 +1230,22 @@ adds between to SQL query
 
 ---
 
+#### builder.overlaps()
+
+```plain
+builder.overlaps(valueA, valueB, columnA, columnB)
+```
+- __only for PostgreSQL__
+
+adds overlaps to SQL query
+
+- `valueA` (String, Number, Date)
+- `valueB` (String, Number, Date)
+- `columnA` (String), column A name
+- `columnB` (String), column B name
+
+---
+
 #### builder.like()
 
 ```plain
