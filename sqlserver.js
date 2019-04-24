@@ -1794,7 +1794,7 @@ Agent.prototype.$bind = function(item, err, rows) {
 	}
 
 	!item.listing && item.condition && !item.nocallback && item.condition.$callback && item.condition.$callback(null, self.results[item.name]);
-	item.condition.$assignname && self.results[item.condition.$assignname] && (self.results[item.condition.$assignname][item.condition.$assignkey] = obj);
+	item.condition && item.condition.$assignname && self.results[item.condition.$assignname] && (self.results[item.condition.$assignname][item.condition.$assignkey] = obj);
 	self.$events.data && self.emit('data', item.target || item.name, self.results);
 	self.last = item.name;
 	self.$bindwhen(item.name);
