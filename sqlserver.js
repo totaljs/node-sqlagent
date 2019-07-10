@@ -1608,7 +1608,7 @@ Agent.prototype._prepare = function(callback) {
 			item.$params && prepare_params_request(request, item.$params);
 
 			request.query(item.$query, function(err, rows) {
-				self.$bind(item, err, rows ? rows.recordset : EMPTYARRAY);
+				self.$bind(item, err, rows ? rows.recordset : []);
 				next();
 			});
 			return;
