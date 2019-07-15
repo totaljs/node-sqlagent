@@ -1627,6 +1627,7 @@ Agent.prototype._prepare = function(callback) {
 			self.$events.query && self.emit('query', item.name, item.$query, item.$params);
 
 			self.db.query({ text: item.$query }, item.$params, function(err, rows) {
+				err && Agent.error && Agent.error(err, item.type, item.$query);
 				self.$bind(item, err, rows ? rows.rows : null);
 				next();
 			});
@@ -1640,6 +1641,7 @@ Agent.prototype._prepare = function(callback) {
 
 			self.db.query('BEGIN', function(err) {
 				if (err) {
+					Agent.error && Agent.error(err, 'begin');
 					self.errors.push(err.message);
 					self.command.length = 0;
 					next(false);
@@ -1659,6 +1661,7 @@ Agent.prototype._prepare = function(callback) {
 				self.db.query('ROLLBACK', function(err) {
 					if (!err)
 						return next();
+					Agent.error && Agent.error(err, 'rollback');
 					self.command.length = 0;
 					self.push(err.message);
 					next(false);
@@ -1673,7 +1676,9 @@ Agent.prototype._prepare = function(callback) {
 					return next();
 				self.errors.push(err.message);
 				self.command.length = 0;
+				Agent.error && Agent.error(err, 'commit');
 				self.db.query('ROLLBACK', function(err) {
+					Agent.error && Agent.error(err, 'rollback');
 					err && self.errors.push(err.message);
 					next();
 				});
@@ -1846,6 +1851,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	var pool = createpool(self.options);
 	pool.connect(function(err, client, done) {
 		if (err) {
+			Agent.error && Agent.error(err, 'driver');
 			if (!self.errors)
 				self.errors = self.isErrorBuilder ? new global.ErrorBuilder() : [];
 			self.errors.push(err);
@@ -2070,6 +2076,8 @@ Agent.init = function(conn, debug) {
 	};
 	EMIT('database');
 };
+
+// Agent.error = (err, type, query) => console.log(err, type, query);
 
 module.exports = Agent;
 global.SqlBuilder = SqlBuilder;
