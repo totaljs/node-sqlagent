@@ -6,7 +6,7 @@ const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 const FILEREADERFILTER = {};
 const REG_APO = /'/;
-const OPTIONS = { reconnectTries: 120, reconnectInterval: 1000 };
+const OPTIONS = { reconnectTries: 120, reconnectInterval: 1000, useNewUrlParser: true, useUnifiedTopology: true };
 
 require('./index');
 
@@ -655,7 +655,11 @@ Agent.connect = function(conn, callback) {
 			// new mongodb
 			if (conn[conn.length - 1] === '/')
 				conn = conn.substring(0, conn.length - 1);
-			db = db.db(conn.substring(conn.lastIndexOf('/') + 1));
+			var name = conn.substring(conn.lastIndexOf('/') + 1);
+			var index = name.indexOf('?');
+			if (index !== -1)
+				name = name.substring(0, index);
+			db = db.db(name);
 		}
 
 		CONNECTIONS[conn] = db;
@@ -1049,8 +1053,9 @@ Agent.prototype.insert = function(name, table) {
 
 		self.$events.query && self.emit('query', name, builder.debug('insert'));
 
-		db.insert(data.$set, function(err, response) {
-			var id = response ? (response.insertedCount ? (response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null) : null;
+		var method = db.insertOne || db.insert;
+		method.call(db, data.$set, function(err, response) {
+			var id = response ? (response.insertedCount ? response.insertedId || (response.insertedIds && response.insertedIds.length > 1 ? response.insertedIds : response.insertedIds[0]) : null) : null;
 			self.id = id;
 			if (!self.isPut)
 				self.$id = self.id;
@@ -1365,7 +1370,8 @@ Agent.prototype.update = function(name, table) {
 				callback(err, data);
 			});
 		} else {
-			db.update(builder.builder, builder.data, { multi: true }, function(err, response) {
+			var method = db.updateMany || db.update;
+			method.call(db, builder.builder, builder.data, { multi: true }, function(err, response) {
 				var data = response ? (response.result.nModified || response.result.n) : 0;
 				builder.$callback && builder.$callback(err, data);
 				callback(err, data);
@@ -1391,14 +1397,15 @@ Agent.prototype.delete = function(name, table) {
 	var fn = function(db, builder, helper, callback) {
 		builder.prepare();
 		self.$events.query && self.emit('query', name, builder.debug('delete'));
+		var method = db.removeOne || db.remove;
 		if (builder._isfirst) {
-			db.remove(builder.builder, { single: true }, function(err, response) {
+			method.call(db, builder.builder, { single: true }, function(err, response) {
 				var data = response ? (response.result.nRemoved || response.result.n) : 0;
 				builder.$callback && builder.$callback(data);
 				callback(err, data);
 			});
 		} else {
-			db.remove(builder.builder, function(err, response) {
+			method.call(db, builder.builder, function(err, response) {
 				var data = response ? (response.result.nRemoved || response.result.n) : 0;
 				builder.$callback && builder.$callback(data);
 				callback(err, data);
