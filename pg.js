@@ -1849,6 +1849,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	(Agent.debug || self.debug) && console.log(self.debugname, '----- exec');
 
 	var pool = createpool(self.options);
+	pool.on('error', (err) => { console.log('Error during execution: ', err.code); });
 	pool.connect(function(err, client, done) {
 		if (err) {
 			Agent.error && Agent.error(err, 'driver');
@@ -1888,6 +1889,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 	}
 
 	var pool = createpool(self.options);
+	pool.on('error', (err) => { console.log('Error during stream write: ', err.code); });
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1928,6 +1930,7 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 Agent.prototype.writeBuffer = function(buffer, callback) {
 	var self = this;
 	var pool = createpool(self.options);
+	pool.on('error', (err) => { console.log('Error during buffer write: ', err.code); });
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1972,6 +1975,7 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 	}
 
 	var pool = createpool(self.options);
+	pool.on('error', (err) => { console.log('Error during stream read: ', err.code); });
 	pool.connect(function(err, client, done) {
 
 		if (err) {
