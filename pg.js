@@ -48,7 +48,10 @@ function createpool(options) {
 	var key = type === 'string' ? options : (options.host + '_' + options.database + '_' + (options.port || ''));
 	if (type === 'string')
 		options = connectionstring(options);
-	return pools[key] ? pools[key] : (pools[key] = options.native ? new Database.native.Pool(options) : new Database.Pool(options));
+	var pool = pools[key] ? pools[key] : (pools[key] = options.native ? new Database.native.Pool(options) : new Database.Pool(options));
+	if (!pool.listeners('error').length)
+		pool.on('error', onerror);
+	return pool;
 }
 
 function SqlBuilder(skip, take, agent) {
@@ -1853,7 +1856,6 @@ Agent.prototype.exec = function(callback, returnIndex) {
 	(Agent.debug || self.debug) && console.log(self.debugname, '----- exec');
 
 	var pool = createpool(self.options);
-	pool.on('error', onerror);
 	pool.connect(function(err, client, done) {
 		if (err) {
 			Agent.error && Agent.error(err, 'driver');
@@ -1893,7 +1895,6 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 	}
 
 	var pool = createpool(self.options);
-	pool.on('error', onerror);
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1934,7 +1935,6 @@ Agent.prototype.writeStream = function(filestream, buffersize, callback) {
 Agent.prototype.writeBuffer = function(buffer, callback) {
 	var self = this;
 	var pool = createpool(self.options);
-	pool.on('error', onerror);
 	pool.connect(function(err, client, done) {
 
 		if (err) {
@@ -1979,7 +1979,6 @@ Agent.prototype.readStream = function(oid, buffersize, callback) {
 	}
 
 	var pool = createpool(self.options);
-	pool.on('error', (err) => { console.log('Error during stream read: ', err.code); });
 	pool.connect(function(err, client, done) {
 
 		if (err) {
