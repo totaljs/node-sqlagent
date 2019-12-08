@@ -1829,7 +1829,7 @@ Agent.prototype.exec = function(callback, returnIndex) {
 			if (options.pathname && options.pathname.length > 1)
 				self.options.database = options.pathname.substring(1);
 			if (options.port)
-				self.options.port = options.port;
+				self.options.port = +options.port;
 			var auth = options.auth;
 			if (auth) {
 				auth = auth.split(':');
