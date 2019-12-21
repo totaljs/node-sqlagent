@@ -241,7 +241,7 @@ SqlBuilder.prototype.order = function(name, desc) {
 
 	var lowered = name.toLowerCase();
 
-	if (lowered.lastIndexOf('desc') !== -1 || lowered.lastIndexOf('asc') !== -1) {
+	if (lowered.lastIndexOf(' desc') !== -1 || lowered.lastIndexOf(' asc') !== -1) {
 		columns_cache[key] = SqlBuilder.column(name, self._schema);
 		self._order.push(columns_cache[key]);
 		return self;
