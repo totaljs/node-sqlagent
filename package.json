@@ -25,5 +25,5 @@
         "type": "git",
         "url": "https://github.com/totaljs/node-sqlagent.git"
     },
-    "version": "12.1.0"
+    "version": "12.1.1"
 }
