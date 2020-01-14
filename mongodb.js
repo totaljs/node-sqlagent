@@ -6,7 +6,7 @@ const NOOP = function(){};
 const PROJECTION = { _id: 1 };
 const FILEREADERFILTER = {};
 const REG_APO = /'/;
-const OPTIONS = { reconnectTries: 120, reconnectInterval: 1000, useNewUrlParser: true, useUnifiedTopology: true };
+const OPTIONS = { useNewUrlParser: true, useUnifiedTopology: true };
 
 require('./index');
 
